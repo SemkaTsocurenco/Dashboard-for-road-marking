@@ -18,9 +18,25 @@ namespace network {
     }
 
     void ConnectionManager::connectToHost(const QString& host, int port) {
+        // Validate input parameters
+        if (host.isEmpty()) {
+            LOG_ERROR << "Cannot connect: empty host";
+            setLastError("Invalid host: empty string");
+            setState(State::Error);
+            return;
+        }
+
+        if (port <= 0 || port > 65535) {
+            LOG_ERROR << "Cannot connect: invalid port " << port;
+            setLastError("Invalid port: must be between 1 and 65535");
+            setState(State::Error);
+            return;
+        }
+
         if (state_ == State::Connected ||
             state_ == State::Connecting ||
             state_ == State::Reconnecting) {
+            LOG_WARN << "Already connected or connecting, ignoring request";
             return;
         }
 
@@ -128,11 +144,11 @@ namespace network {
             scheduleReconnect();
         });
         connect(worker_, &TcpReaderWorker::laneSummaryParsed,
-        this, &ConnectionManager::laneSummaryReceived);
+                this, &ConnectionManager::laneSummaryReceived);
         connect(worker_, &TcpReaderWorker::markingObjectsParsed,
                 this, &ConnectionManager::markingObjectsReceived);
-        // connect(worker_, &TcpReaderWorker::parseErrorOccurred,
-        //         this, &ConnectionManager::parseErrorOccurred);
+        connect(worker_, &TcpReaderWorker::parseErrorOccurred,
+                this, &ConnectionManager::parseErrorReceived);
 
         workerThread_->start();
     }
@@ -225,7 +241,16 @@ namespace network {
     void ConnectionManager::setReconnectInterval(int milliseconds) {
         if (reconnect_interval_ == milliseconds)
             return;
+
+        // Validate reconnect interval (100ms to 60 seconds)
+        if (milliseconds < 100 || milliseconds > 60000) {
+            LOG_WARN << "Invalid reconnect interval: " << milliseconds
+                     << " (must be 100-60000ms), ignoring";
+            return;
+        }
+
         reconnect_interval_ = milliseconds;
+        LOG_DEBUG << "Reconnect interval set to " << milliseconds << "ms";
     }
 
     int ConnectionManager::reconnectInterval() const {
@@ -235,7 +260,17 @@ namespace network {
     void ConnectionManager::setMaxReconnectAttempts(int attempts) {
         if (max_reconnect_attempts_ == attempts)
             return;
+
+        // Validate max reconnect attempts (0 = unlimited, max 1000)
+        if (attempts < 0 || attempts > 1000) {
+            LOG_WARN << "Invalid max reconnect attempts: " << attempts
+                     << " (must be 0-1000), ignoring";
+            return;
+        }
+
         max_reconnect_attempts_ = attempts;
+        LOG_DEBUG << "Max reconnect attempts set to "
+                  << (attempts == 0 ? "unlimited" : std::to_string(attempts));
     }
 
     int ConnectionManager::maxReconnectAttempts() const {

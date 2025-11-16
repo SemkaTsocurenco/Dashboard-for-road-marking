@@ -9,10 +9,18 @@
 
 namespace network {
 
-    class ConnectionManager : public QObject 
+    class ConnectionManager : public QObject
     {
         Q_OBJECT
-    public: 
+        Q_PROPERTY(bool connected READ isConnected NOTIFY connectedChanged)
+        Q_PROPERTY(State state READ state NOTIFY stateChanged)
+        Q_PROPERTY(QString lastError READ lastError NOTIFY lastErrorChanged)
+        Q_PROPERTY(bool autoReconnect READ autoReconnect WRITE setAutoReconnect)
+        Q_PROPERTY(int reconnectInterval READ reconnectInterval WRITE setReconnectInterval)
+        Q_PROPERTY(int maxReconnectAttempts READ maxReconnectAttempts WRITE setMaxReconnectAttempts)
+        Q_PROPERTY(int currentReconnectAttempt READ currentReconnectAttempt NOTIFY reconnectAttempt)
+
+    public:
         enum class State {
             Disconnected,
             Connecting,
@@ -49,8 +57,8 @@ namespace network {
         void stateChanged(State state);
         void laneSummaryReceived(const laneproto::LaneSummary&);
         void markingObjectsReceived(const laneproto::MarkingObjects&);
+        void parseErrorReceived(const laneproto::ParseError& error);
         void reconnectAttempt(int attempt, int maxAttempts);
-        // void warningsReceived(const Warnings&);
 
 
     private:

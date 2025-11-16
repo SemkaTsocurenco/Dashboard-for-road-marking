@@ -25,6 +25,11 @@ namespace network {
     {
         host_ = host;
         port_ = port;
+
+        // Reset parser state before new connection
+        parser_.reset();
+        LOG_DEBUG << "Parser state reset for new connection";
+
         LOG_INFO << "Connecting to " << host.toStdString() << ":" << port;
         socket_->connectToHost(host_, port_);
     }
