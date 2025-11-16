@@ -1,5 +1,6 @@
 #include "ConnectionManager.h"
 #include "LoggerMacros.hpp"
+#include "proto_parser.h"
 #include <qnamespace.h>
 #include <qobjectdefs.h>
 #include <QTimer>
@@ -8,6 +9,9 @@ namespace network {
     ConnectionManager::ConnectionManager(QObject* parent)
         : QObject(parent)
         , reconnect_timer_(new QTimer(this))
+        , lane_view_model_(new viewmodels::LaneStateViewModel(this))
+        , marking_list_model_(new viewmodels::MarkingObjectListModel(this))
+        , warning_list_model_(new viewmodels::WarningListModel(this))
     {
         reconnect_timer_->setSingleShot(true);
         connect(reconnect_timer_, &QTimer::timeout, this, &ConnectionManager::attemptReconnect);
@@ -242,7 +246,6 @@ namespace network {
         if (reconnect_interval_ == milliseconds)
             return;
 
-        // Validate reconnect interval (100ms to 60 seconds)
         if (milliseconds < 100 || milliseconds > 60000) {
             LOG_WARN << "Invalid reconnect interval: " << milliseconds
                      << " (must be 100-60000ms), ignoring";
@@ -279,6 +282,49 @@ namespace network {
 
     int ConnectionManager::currentReconnectAttempt() const {
         return current_reconnect_attempt_;
+    }
+
+    void ConnectionManager::updateWarnings(const std::uint64_t timestamp_ms) {
+        auto warnings = warning_engine_.update(lane_state_, marking_model_, timestamp_ms);
+        warning_model_.clear();
+        warning_model_.reserve(warnings.size());
+        for (auto& w : warnings) {
+            warning_model_.addWarning(std::move(w));
+        }
+        warning_model_.setLastUpdateMs(timestamp_ms);
+        LOG_DEBUG << "WarningModel updated: " << warning_model_;
+
+        // Update ViewModel
+        warning_list_model_->updateFromDomain(warning_model_);
+
+        emit warningModelUpdated();
+    }
+
+
+    void ConnectionManager::laneSummaryReceived(const laneproto::LaneSummary& summary){
+        lane_state_.updateFromProto(summary);
+        LOG_DEBUG << "LaneState updated: " << lane_state_;
+
+        // Update ViewModel
+        lane_view_model_->updateFromDomain(lane_state_);
+
+        emit laneStateUpdated();
+        const std::uint64_t timestamp_ms = lane_state_.timestampMs();
+        updateWarnings(timestamp_ms);
+    }
+
+    void ConnectionManager::markingObjectsReceived(const laneproto::MarkingObjects& objects){
+        marking_model_.updateFromProto(objects);
+        LOG_DEBUG << "MarkingObjectModel updated: " << marking_model_;
+
+        // Update ViewModel
+        marking_list_model_->updateFromDomain(marking_model_);
+
+        emit markingModelUpdated();
+        if (lane_state_.isValid()) {
+            const std::uint64_t timestamp_ms = marking_model_.timestampMs();
+            updateWarnings(timestamp_ms);
+        }
     }
 
 }

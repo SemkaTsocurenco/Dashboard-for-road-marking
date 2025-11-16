@@ -1,11 +1,18 @@
-#pragma once 
+#pragma once
 
 #include <QObject>
 #include <QString>
 #include <QTimer>
+#include <QThread>
 #include "TcpReaderWorker.h"
 #include "proto_parser.h"
-#include <QThread>
+#include "MarkingObject.h"
+#include "Warning.h"
+#include "WarningEngine.h"
+#include "LaneState.h"
+#include "LaneStateViewModel.h"
+#include "MarkingObjectListModel.h"
+#include "WarningListModel.h"
 
 namespace network {
 
@@ -19,6 +26,9 @@ namespace network {
         Q_PROPERTY(int reconnectInterval READ reconnectInterval WRITE setReconnectInterval)
         Q_PROPERTY(int maxReconnectAttempts READ maxReconnectAttempts WRITE setMaxReconnectAttempts)
         Q_PROPERTY(int currentReconnectAttempt READ currentReconnectAttempt NOTIFY reconnectAttempt)
+        Q_PROPERTY(viewmodels::LaneStateViewModel* laneViewModel READ laneViewModel CONSTANT)
+        Q_PROPERTY(viewmodels::MarkingObjectListModel* markingListModel READ markingListModel CONSTANT)
+        Q_PROPERTY(viewmodels::WarningListModel* warningListModel READ warningListModel CONSTANT)
 
     public:
         enum class State {
@@ -51,14 +61,24 @@ namespace network {
         [[nodiscard]] int maxReconnectAttempts() const;
         [[nodiscard]] int currentReconnectAttempt() const;
 
+        const domain::LaneState& laneState() const noexcept { return lane_state_; }
+        const domain::MarkingObjectModel& markingModel() const noexcept { return marking_model_; }
+        const domain::WarningModel& warningModel() const noexcept { return warning_model_; }
+
+        viewmodels::LaneStateViewModel* laneViewModel() const noexcept { return lane_view_model_; }
+        viewmodels::MarkingObjectListModel* markingListModel() const noexcept { return marking_list_model_; }
+        viewmodels::WarningListModel* warningListModel() const noexcept { return warning_list_model_; }
+
+
     signals:
         void lastErrorChanged(const QString& error);
         void connectedChanged(bool connected);
         void stateChanged(State state);
-        void laneSummaryReceived(const laneproto::LaneSummary&);
-        void markingObjectsReceived(const laneproto::MarkingObjects&);
         void parseErrorReceived(const laneproto::ParseError& error);
         void reconnectAttempt(int attempt, int maxAttempts);
+        void laneStateUpdated();
+        void markingModelUpdated();
+        void warningModelUpdated();
 
 
     private:
@@ -72,6 +92,12 @@ namespace network {
         void scheduleReconnect();
         void attemptReconnect();
         void resetReconnectState();
+
+        // Protocol message handlers
+        void laneSummaryReceived(const laneproto::LaneSummary& summary);
+        void markingObjectsReceived(const laneproto::MarkingObjects& objects);
+
+        void updateWarnings(std::uint64_t timestamp_ms);
 
         State state_{State::Disconnected};
         bool connected_{false};
@@ -87,5 +113,14 @@ namespace network {
         QString saved_host_;
         quint16 saved_port_{0};
         QTimer* reconnect_timer_{nullptr};
+
+        domain::LaneState lane_state_;
+        domain::MarkingObjectModel marking_model_;
+        domain::WarningModel warning_model_;
+        domain::WarningEngine warning_engine_;
+
+        viewmodels::LaneStateViewModel* lane_view_model_{nullptr};
+        viewmodels::MarkingObjectListModel* marking_list_model_{nullptr};
+        viewmodels::WarningListModel* warning_list_model_{nullptr};
     };
 }

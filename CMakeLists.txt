@@ -39,6 +39,8 @@ include_directories(
     logger/
     network/
     parser/
+    domain/
+    viewmodels/
 )
 
 # Сбор всех исходных файлов (исключая build директорию)
