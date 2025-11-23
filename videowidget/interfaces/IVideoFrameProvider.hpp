@@ -22,7 +22,7 @@ namespace video {
         };
         Q_ENUM(ProviderState)
 
-        explicit IVideoFrameProvider(QObject* parent = nullptr);
+        explicit IVideoFrameProvider(QObject* parent = nullptr) {};
         ~IVideoFrameProvider() override = default;
 
         virtual void start() = 0;

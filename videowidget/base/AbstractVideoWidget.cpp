@@ -248,9 +248,9 @@ bool AbstractVideoWidget::saveFrame(const QString& filePath) const
 
     bool result = img.save(filePath);
     if (result) {
-        LOG_INFO << "Frame saved to" << filePath;
+        LOG_INFO << "Frame saved to" << filePath.toStdString();
     } else {
-        LOG_ERROR << "Failed to save frame to" << filePath;
+        LOG_ERROR << "Failed to save frame to" << filePath.toStdString();
     }
     return result;
 }
@@ -296,7 +296,7 @@ void AbstractVideoWidget::onFrameReady(const FrameHandlePtr& frame)
 
 void AbstractVideoWidget::onProviderError(const QString& message)
 {
-    LOG_ERROR << "Provider error:" << message;
+    LOG_ERROR << "Provider error:" << message.toStdString();
     emit errorOccurred(message);
 }
 
