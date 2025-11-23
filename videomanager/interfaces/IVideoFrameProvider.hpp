@@ -1,6 +1,8 @@
 #pragma once 
+
 #include <QObject>
 #include <QString>
+#include <QSharedPointer>
 #include "IFrameHandle.hpp"
 
 namespace video {
@@ -34,5 +36,7 @@ namespace video {
         void stateChanged(ProviderState state);
 
     };
+
+    using FrameProviderPtr = QSharedPointer<IVideoFrameProvider>;
 
 } // namespace video
