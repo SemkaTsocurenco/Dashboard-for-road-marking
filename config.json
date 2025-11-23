@@ -1,0 +1,26 @@
+{
+  "network": {
+    "host": "192.168.1.100",
+    "port": 5000,
+    "reconnect_interval_ms": 5000,
+    "max_reconnect_attempts": 0,
+    "auto_reconnect": true
+  },
+  "video": {
+    "source_url": "rtsp://192.168.1.100:8554/stream",
+    "auto_start": false
+  },
+  "warning": {
+    "lane_departure_threshold_m": 0.3,
+    "crosswalk_distance_threshold_m": 30.0,
+    "crosswalk_critical_distance_m": 10.0,
+    "min_marking_confidence": 50,
+    "min_lane_quality": 60,
+    "enable_crosswalk_warnings": true,
+    "enable_lane_departure_warnings": true
+  },
+  "sync": {
+    "max_timestamp_diff_ms": 500,
+    "enable_sync_monitoring": true
+  }
+}

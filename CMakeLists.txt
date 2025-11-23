@@ -36,6 +36,9 @@ else()
 endif()
 
 include_directories(
+    app/
+    config/
+    ui/
     logger/
     network/
     parser/
