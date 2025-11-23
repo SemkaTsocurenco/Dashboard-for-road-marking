@@ -69,9 +69,34 @@ void AbstractVideoWidget::stop()
     m_provider->stop();
 }
 
+void AbstractVideoWidget::pause()
+{
+    if (!m_provider) {
+        LOG_WARN << "Cannot pause: provider is null";
+        return;
+    }
+    LOG_INFO << "Pausing provider";
+    m_provider->pause();
+}
+
+void AbstractVideoWidget::resume()
+{
+    if (!m_provider) {
+        LOG_WARN << "Cannot resume: provider is null";
+        return;
+    }
+    LOG_INFO << "Resuming provider";
+    m_provider->resume();
+}
+
 bool AbstractVideoWidget::isRunning() const
 {
     return m_provider ? m_provider->isRunning() : false;
+}
+
+bool AbstractVideoWidget::isPaused() const
+{
+    return m_provider ? (m_provider->state() == IVideoFrameProvider::ProviderState::Paused) : false;
 }
 
 void AbstractVideoWidget::addFrameProcessor(const FrameProcessorPtr& processor)
@@ -84,10 +109,30 @@ void AbstractVideoWidget::addFrameProcessor(const FrameProcessorPtr& processor)
     LOG_DEBUG << "Added frame processor, count =" << m_processors.size();
 }
 
+void AbstractVideoWidget::removeFrameProcessor(const FrameProcessorPtr& processor)
+{
+    if (!processor) {
+        LOG_WARN << "Tried to remove null frame processor";
+        return;
+    }
+    auto it = std::find(m_processors.begin(), m_processors.end(), processor);
+    if (it != m_processors.end()) {
+        m_processors.erase(it);
+        LOG_DEBUG << "Removed frame processor, count =" << m_processors.size();
+    } else {
+        LOG_WARN << "Frame processor not found";
+    }
+}
+
 void AbstractVideoWidget::clearFrameProcessors()
 {
     m_processors.clear();
     LOG_INFO << "Frame processors cleared";
+}
+
+int AbstractVideoWidget::processorCount() const
+{
+    return m_processors.size();
 }
 
 FrameHandlePtr AbstractVideoWidget::lastFrameHandle() const
@@ -133,6 +178,99 @@ bool AbstractVideoWidget::maintainAspectRatio() const
     return m_maintainAspectRatio;
 }
 
+void AbstractVideoWidget::setBackgroundColor(const QColor& color)
+{
+    if (m_backgroundColor == color)
+        return;
+
+    m_backgroundColor = color;
+    LOG_DEBUG << "Background color changed";
+    update();
+}
+
+QColor AbstractVideoWidget::backgroundColor() const
+{
+    return m_backgroundColor;
+}
+
+void AbstractVideoWidget::setShowFps(bool show)
+{
+    if (m_showFps == show)
+        return;
+
+    m_showFps = show;
+    if (m_showFps) {
+        m_fpsTimer.start();
+        m_frameCounter = 0;
+    }
+    LOG_DEBUG << "Show FPS changed to" << (show ? "true" : "false");
+    update();
+}
+
+bool AbstractVideoWidget::showFps() const
+{
+    return m_showFps;
+}
+
+double AbstractVideoWidget::currentFps() const
+{
+    return m_currentFps;
+}
+
+int64_t AbstractVideoWidget::framesProcessed() const
+{
+    return m_totalFrames;
+}
+
+void AbstractVideoWidget::resetStatistics()
+{
+    m_totalFrames = 0;
+    m_frameCounter = 0;
+    m_currentFps = 0.0;
+    if (m_showFps) {
+        m_fpsTimer.restart();
+    }
+    LOG_INFO << "Statistics reset";
+}
+
+QImage AbstractVideoWidget::captureFrame() const
+{
+    return lastFrameImage();
+}
+
+bool AbstractVideoWidget::saveFrame(const QString& filePath) const
+{
+    QImage img = captureFrame();
+    if (img.isNull()) {
+        LOG_WARN << "Cannot save null image";
+        return false;
+    }
+
+    bool result = img.save(filePath);
+    if (result) {
+        LOG_INFO << "Frame saved to" << filePath;
+    } else {
+        LOG_ERROR << "Failed to save frame to" << filePath;
+    }
+    return result;
+}
+
+void AbstractVideoWidget::updateFpsCounter()
+{
+    if (!m_showFps)
+        return;
+
+    ++m_frameCounter;
+    qint64 elapsed = m_fpsTimer.elapsed();
+
+    if (elapsed >= 1000) {
+        m_currentFps = (m_frameCounter * 1000.0) / elapsed;
+        emit fpsChanged(m_currentFps);
+        m_frameCounter = 0;
+        m_fpsTimer.restart();
+    }
+}
+
 void AbstractVideoWidget::onFrameReady(const FrameHandlePtr& frame)
 {
     if (!frame || !frame->isValid()) {
@@ -143,6 +281,8 @@ void AbstractVideoWidget::onFrameReady(const FrameHandlePtr& frame)
     }
 
     m_lastFrame = frame;
+    ++m_totalFrames;
+    updateFpsCounter();
 
     for (const auto& processor : m_processors) {
         if (processor) {
@@ -175,13 +315,25 @@ void AbstractVideoWidget::paintEvent(QPaintEvent* event)
     QPainter p(this);
 
     if (!m_lastFrame || !m_lastFrame->isValid()) {
-        p.fillRect(rect(), Qt::black);
+        p.fillRect(rect(), m_backgroundColor);
+
+        p.setPen(Qt::gray);
+        p.setFont(QFont("Arial", 24, QFont::Bold));
+        p.drawText(rect(), Qt::AlignCenter, "NO VIDEO");
+
+        drawOverlay(p);
         return;
     }
 
     const QImage& img = m_lastFrame->image();
     if (img.isNull()) {
-        p.fillRect(rect(), Qt::black);
+        p.fillRect(rect(), m_backgroundColor);
+
+        p.setPen(Qt::gray);
+        p.setFont(QFont("Arial", 24, QFont::Bold));
+        p.drawText(rect(), Qt::AlignCenter, "NO VIDEO");
+
+        drawOverlay(p);
         return;
     }
 
@@ -201,6 +353,24 @@ void AbstractVideoWidget::paintEvent(QPaintEvent* event)
         target = QRect(x, y, w, h);
     }
 
-    p.fillRect(rect(), Qt::black);
+    p.fillRect(rect(), m_backgroundColor);
     p.drawImage(target, img);
+    drawOverlay(p);
+}
+
+void AbstractVideoWidget::drawOverlay(QPainter& painter)
+{
+    if (!m_showFps)
+        return;
+
+    painter.save();
+    painter.setPen(Qt::green);
+    painter.setFont(QFont("Arial", 12, QFont::Bold));
+
+    QString fpsText = QString("FPS: %1").arg(m_currentFps, 0, 'f', 1);
+    QString framesText = QString("Frames: %1").arg(m_totalFrames);
+
+    painter.drawText(10, 20, fpsText);
+    painter.drawText(10, 40, framesText);
+    painter.restore();
 }

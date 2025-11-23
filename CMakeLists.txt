@@ -44,6 +44,7 @@ include_directories(
     videowidget/
     videowidget/interfaces/
     videowidget/base/
+    videowidget/src/
 )
 
 # Сбор всех исходных файлов (исключая build директорию)
