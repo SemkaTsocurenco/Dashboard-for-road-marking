@@ -4,6 +4,7 @@
 #include "LaneStateViewModel.h"
 #include "MarkingObjectListModel.h"
 #include "WarningListModel.h"
+#include "MarkingObject.h"
 #include <QPainter>
 #include <QMutex>
 
@@ -28,6 +29,9 @@ namespace video {
         void setLaneStateViewModel(viewmodels::LaneStateViewModel* viewModel);
         void setMarkingObjectListModel(viewmodels::MarkingObjectListModel* model);
         void setWarningListModel(viewmodels::WarningListModel* model);
+
+        // Update marking data from domain model
+        void updateMarkings(const domain::MarkingObjectModel& model);
 
         void setDrawLanes(bool draw);
         void setDrawMarkings(bool draw);

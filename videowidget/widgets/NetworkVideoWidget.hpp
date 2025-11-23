@@ -34,8 +34,13 @@ namespace video
         void connectionFailed(const QString& error);
         void connectionEstablished();
 
+        void frameDisplayed(quint64 timestamp_ms);
+
     private slots:
         void onProviderStateChangedInternal(IVideoFrameProvider::ProviderState state);
+
+    protected:
+        void paintEvent(QPaintEvent* event) override;
 
     private:
         QtMultimediaVideoProvider* m_videoProvider;

@@ -130,3 +130,14 @@ void NetworkVideoWidget::updateConnectionState(bool connected)
     LOG_INFO << "Connection state changed to" << (connected ? "connected" : "disconnected");
     emit connectedChanged(connected);
 }
+
+void NetworkVideoWidget::paintEvent(QPaintEvent* event)
+{
+    AbstractVideoWidget::paintEvent(event);
+
+    auto frame = lastFrameHandle();
+    if (frame && frame->isValid()) {
+        quint64 timestamp_ms = static_cast<quint64>(frame->timestamp());
+        emit frameDisplayed(timestamp_ms);
+    }
+}

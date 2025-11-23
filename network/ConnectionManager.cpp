@@ -21,6 +21,13 @@ namespace network {
         destroyWorker();
     }
 
+    void ConnectionManager::setWarningEngineConfig(const domain::WarningEngineConfig& config) {
+        warning_engine_.setConfig(config);
+        LOG_INFO << "WarningEngine configuration updated: "
+                 << "lane_departure_threshold=" << config.lane_departure_offset_threshold_m << "m, "
+                 << "crosswalk_threshold=" << config.crosswalk_distance_threshold_m << "m";
+    }
+
     void ConnectionManager::connectToHost(const QString& host, int port) {
         // Validate input parameters
         if (host.isEmpty()) {

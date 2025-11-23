@@ -69,6 +69,11 @@ namespace network {
         viewmodels::MarkingObjectListModel* markingListModel() const noexcept { return marking_list_model_; }
         viewmodels::WarningListModel* warningListModel() const noexcept { return warning_list_model_; }
 
+        domain::WarningEngine* warningEngine() noexcept { return &warning_engine_; }
+        const domain::WarningEngine* warningEngine() const noexcept { return &warning_engine_; }
+
+        void setWarningEngineConfig(const domain::WarningEngineConfig& config);
+
 
     signals:
         void lastErrorChanged(const QString& error);
@@ -93,7 +98,6 @@ namespace network {
         void attemptReconnect();
         void resetReconnectState();
 
-        // Protocol message handlers
         void laneSummaryReceived(const laneproto::LaneSummary& summary);
         void markingObjectsReceived(const laneproto::MarkingObjects& objects);
 

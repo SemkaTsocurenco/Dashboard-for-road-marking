@@ -32,6 +32,17 @@ void MarkingOverlayProcessor::setWarningListModel(viewmodels::WarningListModel* 
     LOG_DEBUG << "WarningListModel set";
 }
 
+void MarkingOverlayProcessor::updateMarkings(const domain::MarkingObjectModel& model)
+{
+    if (m_markingObjectListModel) {
+        QMutexLocker locker(&m_mutex);
+        m_markingObjectListModel->updateFromDomain(model);
+        LOG_DEBUG << "MarkingObjectListModel updated from domain, objects count: " << model.size();
+    } else {
+        LOG_WARN << "Cannot update markings: MarkingObjectListModel not set";
+    }
+}
+
 void MarkingOverlayProcessor::setDrawLanes(bool draw)
 {
     QMutexLocker locker(&m_mutex);
