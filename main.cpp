@@ -1,20 +1,32 @@
 #include <QApplication>
-#include <QMainWindow>
-#include <QLabel>
+#include "AppController.hpp"
+#include "MainWindow.hpp"
+#include "LoggerMacros.hpp"
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    QMainWindow window;
-    window.setWindowTitle("Dashboard - Приборная панель детектора");
-    window.resize(800, 600);
+    // Initialize logger
+    logger::Logger::instance().set_level(logger::LogLevel::Debug);
+    LOG_INFO << "=== Dashboard Application Starting ===";
 
-    QLabel *label = new QLabel("Dashboard готов к работе", &window);
-    label->setAlignment(Qt::AlignCenter);
-    window.setCentralWidget(label);
+    // Create and initialize AppController
+    app::AppController controller;
 
+    if (!controller.initialize("config.json")) {
+        LOG_ERROR << "Failed to initialize AppController";
+        return 1;
+    }
+
+    // Create main window with controller
+    ui::MainWindow window(&controller);
     window.show();
 
-    return app.exec();
+    LOG_INFO << "Application ready, entering event loop";
+
+    int result = app.exec();
+
+    LOG_INFO << "=== Dashboard Application Exiting with code: " << result << " ===";
+    return result;
 }
