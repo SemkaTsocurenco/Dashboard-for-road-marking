@@ -41,9 +41,9 @@ include_directories(
     parser/
     domain/
     viewmodels/
-    videomanager/
-    videomanager/interfaces/
-    videomanager/base/
+    videowidget/
+    videowidget/interfaces/
+    videowidget/base/
 )
 
 # Сбор всех исходных файлов (исключая build директорию)
