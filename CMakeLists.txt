@@ -23,7 +23,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Поиск зависимостей
-find_package(Qt6 COMPONENTS Core Gui Widgets Network REQUIRED)
+find_package(Qt6 COMPONENTS Core Gui Widgets Network Multimedia REQUIRED)
 
 # OpenCV опционально (для обработки изображений)
 find_package(OpenCV QUIET)
@@ -41,6 +41,9 @@ include_directories(
     parser/
     domain/
     viewmodels/
+    viewmanager/
+    viewmanager/interfaces/
+    viewmanager/base/
 )
 
 # Сбор всех исходных файлов (исключая build директорию)
@@ -76,6 +79,7 @@ target_link_libraries(dashboard
     Qt6::Gui
     Qt6::Widgets
     Qt6::Network
+    Qt6::Multimedia
 )
 
 # Добавление OpenCV, если найден
