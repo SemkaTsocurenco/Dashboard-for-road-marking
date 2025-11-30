@@ -14,12 +14,21 @@ Model {
     required property bool isArrow
     required property bool isValid
     required property int confidence
+    required property string lineColor
+    required property string lineStyle
+
+    Component.onCompleted: {
+        console.log("MarkingLine created: x=", xMeters, "y=", yMeters, "length=", lengthMeters,
+                    "width=", widthMeters, "valid=", isValid, "color=", lineColor,
+                    "position:", position, "scale:", scale, "visible:", visible)
+    }
 
     source: "#Cube"
     visible: isValid
 
     // Keep markings slightly above the plane to avoid z-fighting
-    position: Qt.vector3d(xMeters, 0.02, yMeters)
+    // Invert Y coordinate to match camera view direction (camera looks toward -Z)
+    position: Qt.vector3d(xMeters, 0.02, -yMeters)
 
     // Use real-world meters directly
     scale: Qt.vector3d(
@@ -36,20 +45,19 @@ Model {
     materials: [
         PrincipledMaterial {
             property color laneColor: {
-                if (isCrosswalk) {
-                    return "#ffffff"
-                } else if (isArrow) {
-                    return "#ffd700"
-                } else if (className === "Unknown") {
-                    return "#c0c0c0"
-                } else {
-                    return "#e7f0ff"
-                }
+                const lc = lineColor.toLowerCase()
+                if (lc === "yellow") return "#ffd700"
+                if (lc === "red")    return "#ff5555"
+                if (lc === "white")  return "#ffffff"
+                if (isCrosswalk)     return "#ffffff"
+                if (isArrow)         return "#ffd700"
+                // Default: bright white for unknown/unspecified
+                return "#ffffff"
             }
 
             baseColor: laneColor
-            emissiveFactor: laneColor
-            roughness: 0.55
+            emissiveFactor: Qt.vector3d(laneColor.r * 0.8, laneColor.g * 0.8, laneColor.b * 0.8)
+            roughness: lineStyle.toLowerCase() === "dashed" ? 0.8 : 0.55
             metalness: 0.0
         }
     ]

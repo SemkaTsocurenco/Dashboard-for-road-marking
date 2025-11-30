@@ -3,6 +3,10 @@ import QtQuick3D
 
 // Simple car placeholder composed of stacked cubes for visibility
 Node {
+    Component.onCompleted: {
+        console.log("CarModel created at position:", position)
+    }
+
     // Shadow footprint to outline the car
     Model {
         source: "#Cube"

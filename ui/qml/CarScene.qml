@@ -6,17 +6,26 @@ Node {
     property alias camera: camera
 
     // Camera placement tuned for a balanced isometric view
-    property real cameraHeight: 50
-    property real cameraDistance: -1100
-    Component.onCompleted: console.log("CarScene loaded")
+    property real cameraHeight: 250
+    property real cameraDistance: -25
+    Component.onCompleted: {
+        console.log("CarScene loaded")
+        console.log("Camera position:", camera.position)
+        console.log("Camera rotation:", camera.eulerRotation)
+        console.log("markingModel defined:", typeof markingModel !== 'undefined')
+        console.log("markingModel:", markingModel)
+        if (typeof markingModel !== 'undefined' && markingModel) {
+            console.log("Marking model count:", markingModel.count)
+        }
+    }
 
     PerspectiveCamera {
         id: camera
         position: Qt.vector3d(0, cameraHeight, cameraDistance) // look toward -Z
-        eulerRotation: Qt.vector3d(-50, 0, 0) // tilt downward toward the road
-        fieldOfView: 58
+        eulerRotation: Qt.vector3d(-35, 0, 0) // tilt downward toward the road
+        fieldOfView: 60
         clipNear: 0.1
-        clipFar: 120
+        clipFar: 1000
     }
 
     DirectionalLight {
@@ -40,14 +49,14 @@ Node {
         color: "#5a5a5a"
     }
 
-    // Local light near the car to make it pop
+    // Local light near the car to make it pop (brightness reduced to avoid washing out)
     PointLight {
-        position: Qt.vector3d(0, 4.0, 4.0)
-        brightness: 120
+        position: Qt.vector3d(0, 10.0, 0)
+        brightness: 5
         color: "#ffffff"
-        quadraticFade: 0.08
-        linearFade: 0.02
-        constantFade: 0.5
+        quadraticFade: 0.5
+        linearFade: 0.1
+        constantFade: 1.0
     }
 
     RoadPlane {
@@ -60,20 +69,52 @@ Node {
         position: Qt.vector3d(0, 0.6, 0)
     }
 
+
     Repeater3D {
+        id: markingRepeater
         model: markingModel
 
-        delegate: MarkingLine {
-            xMeters: model.xMeters
-            yMeters: model.yMeters
-            lengthMeters: model.lengthMeters
-            widthMeters: model.widthMeters
-            yawDeg: model.yawDeg
-            className: model.className
-            isCrosswalk: model.isCrosswalk
-            isArrow: model.isArrow
-            isValid: model.isValid
-            confidence: model.confidence
+        onModelChanged: {
+            console.log("Repeater3D model changed, count:", model ? model.count : 0)
+        }
+
+        delegate: MarkingLine {}
+    }
+
+    // Visualize lane boundary points (if provided) as small markers
+    Repeater3D {
+        id: leftPointsRepeater
+        model: (typeof laneViewModel !== 'undefined' && laneViewModel && laneViewModel.leftPoints) ? laneViewModel.leftPoints : []
+
+        Model {
+            required property var modelData
+            source: "#Sphere"
+            scale: Qt.vector3d(0.08, 0.08, 0.08)
+            // Invert Y to match camera view direction
+            position: Qt.vector3d(modelData.x, 0.1, -modelData.y)
+            materials: PrincipledMaterial {
+                baseColor: "#ffd700"
+                emissiveFactor: Qt.vector3d(0.3, 0.3, 0.0)
+                roughness: 0.4
+            }
+        }
+    }
+
+    Repeater3D {
+        id: rightPointsRepeater
+        model: (typeof laneViewModel !== 'undefined' && laneViewModel && laneViewModel.rightPoints) ? laneViewModel.rightPoints : []
+
+        Model {
+            required property var modelData
+            source: "#Sphere"
+            scale: Qt.vector3d(0.08, 0.08, 0.08)
+            // Invert Y to match camera view direction
+            position: Qt.vector3d(modelData.x, 0.1, -modelData.y)
+            materials: PrincipledMaterial {
+                baseColor: "#ffffff"
+                emissiveFactor: Qt.vector3d(0.3, 0.3, 0.3)
+                roughness: 0.4
+            }
         }
     }
 }

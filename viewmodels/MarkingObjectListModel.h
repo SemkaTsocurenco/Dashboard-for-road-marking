@@ -25,7 +25,9 @@ namespace viewmodels {
             IsArrowRole,
             IsValidRole,
             AreaRole,
-            DistanceRole  // Distance from vehicle (calculated from x, y)
+            DistanceRole,  // Distance from vehicle (calculated from x, y)
+            LineColorRole,
+            LineStyleRole
         };
 
         explicit MarkingObjectListModel(QObject* parent = nullptr);
@@ -46,6 +48,8 @@ namespace viewmodels {
 
     private:
         QString classIdToString(laneproto::MarkingClassId id) const;
+        QString lineColorToString(laneproto::LineColor color) const;
+        QString lineStyleToString(laneproto::LineStyle style) const;
 
         std::vector<domain::MarkingObject> objects_;
         quint64 timestamp_ms_{0};

@@ -100,6 +100,8 @@ namespace network {
 
         void laneSummaryReceived(const laneproto::LaneSummary& summary);
         void markingObjectsReceived(const laneproto::MarkingObjects& objects);
+        void laneDetailsReceived(const laneproto::LaneDetails& details);
+        void markingObjectsExReceived(const laneproto::MarkingObjects& objects);
 
         void updateWarnings(std::uint64_t timestamp_ms);
 

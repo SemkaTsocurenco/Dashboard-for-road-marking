@@ -1,15 +1,25 @@
 import QtQuick
 import QtQuick3D
 
-Rectangle {
-    anchors.fill: parent
-    color: "#1a1a1a"
-    Component.onCompleted: console.log("Dashboard.qml loaded")
+Item {
+    id: root
+    width: 800
+    height: 600
+
+    Component.onCompleted: {
+        console.log("Dashboard.qml loaded, size:", width, "x", height)
+        console.log("=== CAMERA CONTROLS ===")
+        console.log("WASD - Move camera (forward/back/left/right)")
+        console.log("Space/Shift - Move camera up/down")
+        console.log("Arrow keys - Rotate camera")
+        console.log("R - Reset camera to default position")
+        cameraController.focus = true
+    }
 
     View3D {
+        id: view3d
         anchors.fill: parent
-        camera: carScene.camera
-        z: 0
+        camera: carScene.camera  // CRITICAL: Must specify camera!
 
         environment: SceneEnvironment {
             backgroundMode: SceneEnvironment.Color
@@ -23,11 +33,53 @@ Rectangle {
         }
     }
 
+    // Camera controller
+    CameraController {
+        id: cameraController
+        anchors.fill: parent
+        camera: carScene.camera
+    }
+
     // Overlays
     Item {
         anchors.fill: parent
         anchors.margins: 0
         z: 10
+
+        // Camera position display
+        Rectangle {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.margins: 10
+            width: 350
+            height: 80
+            color: "#80000000"
+            radius: 5
+
+            Column {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 5
+
+                Text {
+                    text: cameraController.positionText
+                    color: "#00ff00"
+                    font.pixelSize: 14
+                    font.family: "monospace"
+                }
+                Text {
+                    text: cameraController.rotationText
+                    color: "#00ff00"
+                    font.pixelSize: 14
+                    font.family: "monospace"
+                }
+                Text {
+                    text: "WASD+Space/Shift: move | Arrows: rotate | R: reset"
+                    color: "#ffff00"
+                    font.pixelSize: 10
+                }
+            }
+        }
 
         WarningPanel {
             anchors.top: parent.top

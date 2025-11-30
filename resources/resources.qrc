@@ -9,5 +9,6 @@
         <file alias="WarningPanel.qml">../ui/qml/WarningPanel.qml</file>
         <file alias="CenterOffsetIndicator.qml">../ui/qml/CenterOffsetIndicator.qml</file>
         <file alias="ConnectionStatus.qml">../ui/qml/ConnectionStatus.qml</file>
+        <file alias="CameraController.qml">../ui/qml/CameraController.qml</file>
   </qresource>
 </RCC>

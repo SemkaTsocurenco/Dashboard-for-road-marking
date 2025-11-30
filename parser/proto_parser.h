@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <vector>
 #include <string>
+#include <array>
 #include "../logger/Logger.hpp"
 
 namespace laneproto {
@@ -16,6 +17,8 @@ namespace laneproto {
     enum class MsgType : std::uint8_t {
         LaneSummary     = 0x01,
         MarkingObjects  = 0x02,
+        LaneDetails     = 0x03,
+        MarkingObjectsEx= 0x04,
     };
 
     enum class LaneType : std::uint8_t {
@@ -33,6 +36,20 @@ namespace laneproto {
         Crosswalk     = 0x02,
     };
 
+    enum class LineColor : std::uint8_t {
+        Unknown = 0x00,
+        White   = 0x01,
+        Yellow  = 0x02,
+        Red     = 0x03,
+    };
+
+    enum class LineStyle : std::uint8_t {
+        Unknown = 0x00,
+        Solid   = 0x01,
+        Dashed  = 0x02,
+        Double  = 0x03,
+    };
+
     enum class ParseErrorCode {
         Unknown,
         BadVersion,
@@ -43,6 +60,8 @@ namespace laneproto {
         UnknownMsgType,
         LaneSummaryFormat,
         MarkingFormat,
+        LaneDetailsFormat,
+        MarkingExFormat,
     };
 
     struct ParseError {
@@ -70,6 +89,8 @@ namespace laneproto {
         float yaw_deg = 0.0f;
         std::uint8_t confidence = 0;
         std::uint8_t flags = 0;
+        LineColor line_color = LineColor::Unknown;
+        LineStyle line_style = LineStyle::Unknown;
     };
 
     struct MarkingObjects {
@@ -78,12 +99,39 @@ namespace laneproto {
         std::vector<MarkingObject> objects;
     };
 
+    struct LanePoint {
+        float x_m = 0.0f;
+        float y_m = 0.0f;
+    };
+
+    struct LaneBoundaryDetails {
+        LaneType type = LaneType::Unknown;
+        LineColor color = LineColor::Unknown;
+        float width_m = 0.0f;
+        std::uint8_t quality = 0;
+        std::uint8_t points_count = 0;
+        std::array<LanePoint, 3> points{};
+    };
+
+    struct LaneDetails {
+        TimestampMs timestamp_ms{};
+        SequenceNumber seq{};
+        float left_offset_m = 0.0f;
+        float right_offset_m = 0.0f;
+        std::uint8_t allowed_maneuvers = 0;
+        std::uint8_t quality = 0;
+        LaneBoundaryDetails left;
+        LaneBoundaryDetails right;
+    };
+
     class IMessageHandler {
     public: 
         virtual ~IMessageHandler() = default;
 
         virtual void onLaneSummary(const LaneSummary& msg) = 0;
         virtual void onMarkingObjects(const MarkingObjects& msg) = 0;
+        virtual void onLaneDetails(const LaneDetails& msg) = 0;
+        virtual void onMarkingObjectsEx(const MarkingObjects& msg) = 0;
         virtual void onParseError(const ParseError& error) = 0;
     };
 
@@ -137,7 +185,9 @@ namespace laneproto {
         bool parseHeaderFromBuffer();
         bool verifyCrc();
         void handleMarkingObjects();
+        void handleMarkingObjectsEx();
         void handleLaneSummary();
+        void handleLaneDetails();
     };
 
 

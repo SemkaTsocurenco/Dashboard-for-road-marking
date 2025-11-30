@@ -19,10 +19,10 @@ int main(int argc, char *argv[])
     parser.addHelpOption();
 
     QCommandLineOption hostOption(QStringList() << "H" << "host",
-                                  "Dashboard host / video host (default 127.0.0.1)",
+                                  "Data host override (default 127.0.0.1)",
                                   "host");
     QCommandLineOption portOption(QStringList() << "P" << "port",
-                                  "Dashboard port / video port (default 5000)",
+                                  "Data port override (default 9000; RTSP video override shares it)",
                                   "port");
 
     parser.addOption(hostOption);

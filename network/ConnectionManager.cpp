@@ -158,6 +158,10 @@ namespace network {
                 this, &ConnectionManager::laneSummaryReceived);
         connect(worker_, &TcpReaderWorker::markingObjectsParsed,
                 this, &ConnectionManager::markingObjectsReceived);
+        connect(worker_, &TcpReaderWorker::laneDetailsParsed,
+                this, &ConnectionManager::laneDetailsReceived);
+        connect(worker_, &TcpReaderWorker::markingObjectsExParsed,
+                this, &ConnectionManager::markingObjectsExReceived);
         connect(worker_, &TcpReaderWorker::parseErrorOccurred,
                 this, &ConnectionManager::parseErrorReceived);
 
@@ -320,11 +324,35 @@ namespace network {
         updateWarnings(timestamp_ms);
     }
 
+    void ConnectionManager::laneDetailsReceived(const laneproto::LaneDetails& details){
+        lane_state_.updateFromProto(details);
+        LOG_DEBUG << "LaneState (details) updated: " << lane_state_;
+
+        lane_view_model_->updateFromDomain(lane_state_);
+
+        emit laneStateUpdated();
+        const std::uint64_t timestamp_ms = lane_state_.timestampMs();
+        updateWarnings(timestamp_ms);
+    }
+
     void ConnectionManager::markingObjectsReceived(const laneproto::MarkingObjects& objects){
         marking_model_.updateFromProto(objects);
         LOG_DEBUG << "MarkingObjectModel updated: " << marking_model_;
 
         // Update ViewModel
+        marking_list_model_->updateFromDomain(marking_model_);
+
+        emit markingModelUpdated();
+        if (lane_state_.isValid()) {
+            const std::uint64_t timestamp_ms = marking_model_.timestampMs();
+            updateWarnings(timestamp_ms);
+        }
+    }
+
+    void ConnectionManager::markingObjectsExReceived(const laneproto::MarkingObjects& objects){
+        marking_model_.updateFromProto(objects);
+        LOG_DEBUG << "MarkingObjectModel (extended) updated: " << marking_model_;
+
         marking_list_model_->updateFromDomain(marking_model_);
 
         emit markingModelUpdated();

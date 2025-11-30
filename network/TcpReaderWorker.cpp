@@ -1,19 +1,20 @@
 #include "TcpReaderWorker.h"
 #include "LoggerMacros.hpp"
 #include <QByteArray>
+#include <QHostAddress>
 #include <cstdint>
 #include <cstddef>
 
 namespace network {
     TcpReaderWorker::TcpReaderWorker(QObject* parent)
         : QObject(parent)
-        , socket_(new QTcpSocket(this))
+        , server_(new QTcpServer(this))
+        , socket_(nullptr)
     {
-        connect(socket_, &QTcpSocket::connected, this, &TcpReaderWorker::onSocketConnected);
-        connect(socket_, &QTcpSocket::disconnected, this, &TcpReaderWorker::onSocketDisconnected);
-        connect(socket_, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred),
-                this, &TcpReaderWorker::onSocketError);
-        connect(socket_, &QTcpSocket::readyRead, this, &TcpReaderWorker::onReadyRead);
+        connect(server_, &QTcpServer::newConnection,
+                this, &TcpReaderWorker::onNewConnection);
+        connect(server_, &QTcpServer::acceptError,
+                this, &TcpReaderWorker::onServerError);
     }
 
     TcpReaderWorker::~TcpReaderWorker()
@@ -30,39 +31,130 @@ namespace network {
         parser_.reset();
         LOG_DEBUG << "Parser state reset for new connection";
 
-        LOG_INFO << "Connecting to " << host.toStdString() << ":" << port;
-        socket_->connectToHost(host_, port_);
+        // Tear down existing client connection if any
+        if (socket_) {
+            socket_->disconnect(this);
+            socket_->disconnectFromHost();
+            socket_->deleteLater();
+            socket_ = nullptr;
+        }
+
+        if (server_->isListening()) {
+            server_->close();
+        }
+
+        QHostAddress bind_addr;
+        if (!bind_addr.setAddress(host_)) {
+            LOG_WARN << "Invalid bind address '" << host_.toStdString()
+                     << "', falling back to 0.0.0.0";
+            bind_addr = QHostAddress::Any;
+        }
+
+        if (!server_->listen(bind_addr, port_)) {
+            LOG_ERROR << "Failed to listen on " << host_.toStdString()
+                      << ":" << port_ << " - " << server_->errorString().toStdString();
+            emit errorOccurred(server_->errorString());
+            return;
+        }
+
+        LOG_INFO << "Listening for incoming TCP on "
+                 << server_->serverAddress().toString().toStdString()
+                 << ":" << server_->serverPort();
     }
 
     void TcpReaderWorker::stop()
     {
-        if (socket_->isOpen()) {
-            LOG_INFO << "Disconnecting from " << host_.toStdString() << ":" << port_;
+        if (socket_) {
+            LOG_INFO << "Closing client connection from "
+                     << socket_->peerAddress().toString().toStdString()
+                     << ":" << socket_->peerPort();
             socket_->disconnectFromHost();
+            socket_->deleteLater();
+            socket_ = nullptr;
+        }
+        if (server_->isListening()) {
+            LOG_INFO << "Stopping listener on " << host_.toStdString() << ":" << port_;
+            server_->close();
         }
     }
 
     void TcpReaderWorker::onSocketConnected()
     {
-        LOG_INFO << "Successfully connected to " << host_.toStdString() << ":" << port_;
+        if (!socket_)
+            return;
+
+        LOG_INFO << "Accepted connection from "
+                 << socket_->peerAddress().toString().toStdString()
+                 << ":" << socket_->peerPort();
         emit connected();
     }
 
     void TcpReaderWorker::onSocketDisconnected()
     {
-        LOG_WARN << "Disconnected from " << host_.toStdString() << ":" << port_;
+        QString peer = socket_ ? socket_->peerAddress().toString() : host_;
+        quint16 peer_port = socket_ ? socket_->peerPort() : port_;
+        LOG_WARN << "Disconnected from " << peer.toStdString() << ":" << peer_port;
+
+        if (socket_) {
+            socket_->deleteLater();
+            socket_ = nullptr;
+        }
         emit disconnected();
     }
 
     void TcpReaderWorker::onSocketError(QAbstractSocket::SocketError socketError)
     {
         Q_UNUSED(socketError);
-        LOG_ERROR << "Socket error: " << socket_->errorString().toStdString();
-        emit errorOccurred(socket_->errorString());
+        QString err = socket_ ? socket_->errorString() : QStringLiteral("Unknown socket error");
+        LOG_ERROR << "Socket error: " << err.toStdString();
+        emit errorOccurred(err);
+    }
+
+    void TcpReaderWorker::onServerError(QAbstractSocket::SocketError socketError)
+    {
+        Q_UNUSED(socketError);
+        QString err = server_ ? server_->errorString() : QStringLiteral("Unknown server error");
+        LOG_ERROR << "Server error: " << err.toStdString();
+        emit errorOccurred(err);
+    }
+
+    void TcpReaderWorker::onNewConnection()
+    {
+        while (server_->hasPendingConnections()) {
+            QTcpSocket* client = server_->nextPendingConnection();
+            if (!client)
+                continue;
+
+            if (socket_) {
+                LOG_WARN << "Replacing existing client connection from "
+                         << socket_->peerAddress().toString().toStdString()
+                         << ":" << socket_->peerPort();
+                socket_->disconnect(this);
+                socket_->disconnectFromHost();
+                socket_->deleteLater();
+                socket_ = nullptr;
+            }
+
+            socket_ = client;
+
+            connect(socket_, &QTcpSocket::disconnected,
+                    this, &TcpReaderWorker::onSocketDisconnected);
+            connect(socket_, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred),
+                    this, &TcpReaderWorker::onSocketError);
+            connect(socket_, &QTcpSocket::readyRead,
+                    this, &TcpReaderWorker::onReadyRead);
+
+            parser_.reset();
+            LOG_DEBUG << "Parser state reset on new client connection";
+            onSocketConnected();
+        }
     }
 
     void TcpReaderWorker::onReadyRead()
     {
+        if (!socket_)
+            return;
+
         QByteArray data = socket_->readAll();
         if (data.isEmpty())
             return;
@@ -88,6 +180,21 @@ namespace network {
                   << ", timestamp=" << msg.timestamp_ms
                   << ", objects=" << msg.objects.size();
         owner_.markingObjectsParsed(msg);
+    }
+
+    void TcpReaderWorker::MessageHandler::onLaneDetails(const laneproto::LaneDetails& msg){
+        LOG_DEBUG << "LaneDetails received: seq=" << static_cast<int>(msg.seq)
+                  << ", timestamp=" << msg.timestamp_ms
+                  << ", left_pts=" << static_cast<int>(msg.left.points_count)
+                  << ", right_pts=" << static_cast<int>(msg.right.points_count);
+        owner_.laneDetailsParsed(msg);
+    }
+
+    void TcpReaderWorker::MessageHandler::onMarkingObjectsEx(const laneproto::MarkingObjects& msg){
+        LOG_DEBUG << "MarkingObjectsEx received: seq=" << static_cast<int>(msg.seq)
+                  << ", timestamp=" << msg.timestamp_ms
+                  << ", objects=" << msg.objects.size();
+        owner_.markingObjectsExParsed(msg);
     }
 
     void TcpReaderWorker::MessageHandler::onParseError(const laneproto::ParseError& error){
@@ -119,6 +226,12 @@ namespace network {
                 break;
             case laneproto::ParseErrorCode::MarkingFormat:
                 error_code_str = "MarkingFormat";
+                break;
+            case laneproto::ParseErrorCode::LaneDetailsFormat:
+                error_code_str = "LaneDetailsFormat";
+                break;
+            case laneproto::ParseErrorCode::MarkingExFormat:
+                error_code_str = "MarkingExFormat";
                 break;
         }
 

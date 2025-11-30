@@ -14,6 +14,8 @@ namespace domain {
         yaw_deg_ = msg.yaw_deg;
         confidence_ = msg.confidence;
         flags_ = msg.flags;
+        line_color_ = msg.line_color;
+        line_style_ = msg.line_style;
     }
 
     laneproto::MarkingClassId MarkingObject::classId() const noexcept {
@@ -85,6 +87,8 @@ namespace domain {
            << ", yaw_deg=" << obj.yawDeg()
            << ", confidence=" << static_cast<int>(obj.confidence())
            << ", flags=0x" << std::hex << static_cast<int>(obj.rawFlags()) << std::dec
+           << ", line_color=" << static_cast<int>(obj.lineColor())
+           << ", line_style=" << static_cast<int>(obj.lineStyle())
            << " }";
         return os;
     }

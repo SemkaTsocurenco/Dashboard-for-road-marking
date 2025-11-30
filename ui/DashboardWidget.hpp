@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QWidget>
-#include <QQuickView>
+#include <QQuickWidget>
 
 namespace app {
 class AppController;
@@ -18,8 +18,7 @@ public:
 
 private:
     app::AppController* controller_{nullptr};
-    QQuickView* view_{nullptr};
-    QWidget* container_{nullptr};
+    QQuickWidget* quickWidget_{nullptr};
 };
 
 }

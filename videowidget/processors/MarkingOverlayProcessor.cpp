@@ -2,9 +2,56 @@
 #include "LoggerMacros.hpp"
 #include <QPen>
 #include <QBrush>
+#include <QVariant>
+#include <QPointF>
 #include <cmath>
 
 using namespace video;
+
+namespace {
+    QColor laneColorFromString(const QString& color) {
+        const QString c = color.toLower();
+        if (c == "white")  return QColor(255, 255, 255);
+        if (c == "yellow") return QColor(255, 215, 0);
+        if (c == "red")    return QColor(220, 20, 60);
+        return QColor(180, 180, 180);
+    }
+
+    Qt::PenStyle penStyleForLaneString(const QString& typeStr) {
+        const QString t = typeStr.toLower();
+        if (t.contains("dashed")) return Qt::DashLine;
+        if (t.contains("solid"))  return Qt::SolidLine;
+        return Qt::SolidLine;
+    }
+
+    QColor objectColorFromStrings(const QString& colorStr, const QString& styleStr,
+                                  bool isCrosswalk, bool isArrow) {
+        if (!colorStr.isEmpty() && colorStr != "Unknown") {
+            return laneColorFromString(colorStr);
+        }
+        if (isCrosswalk) return QColor("#00ffff");
+        if (isArrow)     return QColor("#ff00ff");
+        if (styleStr.toLower() == "double") return QColor("#ffd700");
+        return QColor("#4da3ff");
+    }
+
+    Qt::PenStyle penStyleFromString(const QString& style) {
+        const QString s = style.toLower();
+        if (s == "dashed") return Qt::DashLine;
+        if (s == "double") return Qt::DotLine;
+        return Qt::SolidLine;
+    }
+
+    QVector<QPointF> variantPointsToVec(const QVariantList& list) {
+        QVector<QPointF> pts;
+        pts.reserve(list.size());
+        for (const auto& v : list) {
+            QPointF p = v.toPointF();
+            pts.push_back(p);
+        }
+        return pts;
+    }
+}
 
 MarkingOverlayProcessor::MarkingOverlayProcessor()
 {
@@ -212,20 +259,51 @@ void MarkingOverlayProcessor::drawLaneOverlay(QPainter& painter, const QSize& im
     const int rightLineX = centerX + static_cast<int>(rightOffset * pixelsPerMeter);
     const int centerLineX = centerX + static_cast<int>(centerOffset * pixelsPerMeter);
 
-    QPen lanePen(Qt::green, 3);
-    painter.setPen(lanePen);
+    const QColor leftColor = laneColorFromString(m_laneStateViewModel->laneColorLeft());
+    const QColor rightColor = laneColorFromString(m_laneStateViewModel->laneColorRight());
 
+    QPen lanePenLeft(leftColor, std::max(2.0f, m_laneStateViewModel->laneWidthLeftMeters() * 10.0f),
+                     penStyleForLaneString(m_laneStateViewModel->laneTypeLeft()));
+    painter.setPen(lanePenLeft);
     painter.drawLine(leftLineX, bottomY, leftLineX, topY);
+
+    QPen lanePenRight(rightColor, std::max(2.0f, m_laneStateViewModel->laneWidthRightMeters() * 10.0f),
+                      penStyleForLaneString(m_laneStateViewModel->laneTypeRight()));
+    painter.setPen(lanePenRight);
     painter.drawLine(rightLineX, bottomY, rightLineX, topY);
 
     QPen centerPen(Qt::yellow, 2, Qt::DashLine);
     painter.setPen(centerPen);
     painter.drawLine(centerLineX, bottomY, centerLineX, topY);
 
+    // Draw detailed polyline points if present
+    auto drawBoundaryPoints = [&](const QVariantList& points, const QColor& color){
+        const QVector<QPointF> pts = variantPointsToVec(points);
+        if (pts.isEmpty())
+            return;
+
+        QPen pen(color, 3, Qt::SolidLine);
+        painter.setPen(pen);
+
+        for (int i = 0; i < pts.size(); ++i) {
+            QPointF p = worldToImage(pts[i].x(), pts[i].y(), imageSize);
+            painter.drawEllipse(p, 4, 4);
+            if (i > 0) {
+                QPointF prev = worldToImage(pts[i-1].x(), pts[i-1].y(), imageSize);
+                painter.drawLine(prev, p);
+            }
+        }
+    };
+
+    drawBoundaryPoints(m_laneStateViewModel->leftPoints(), leftColor);
+    drawBoundaryPoints(m_laneStateViewModel->rightPoints(), rightColor);
+
     painter.setPen(Qt::white);
     painter.setFont(QFont("Arial", 10));
     painter.drawText(10, 20, QString("Lane Width: %1m").arg(m_laneStateViewModel->laneWidthMeters(), 0, 'f', 2));
-    painter.drawText(10, 35, QString("Quality: %1%").arg(m_laneStateViewModel->qualityPercent()));
+    painter.drawText(10, 35, QString("Quality: %1% / %2%")
+                                  .arg(m_laneStateViewModel->laneQualityLeftPercent())
+                                  .arg(m_laneStateViewModel->laneQualityRightPercent()));
 }
 
 void MarkingOverlayProcessor::drawMarkingObjects(QPainter& painter, const QSize& imageSize)
@@ -246,13 +324,16 @@ void MarkingOverlayProcessor::drawMarkingObjects(QPainter& painter, const QSize&
         const bool isCrosswalk = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::IsCrosswalkRole).toBool();
         const bool isArrow = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::IsArrowRole).toBool();
         const float confidence = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::ConfidenceRole).toFloat();
+        const QString lineColorStr = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::LineColorRole).toString();
+        const QString lineStyleStr = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::LineStyleRole).toString();
 
         QPointF pos = worldToImage(x, y, imageSize);
 
-        QColor color = isCrosswalk ? Qt::cyan : (isArrow ? Qt::magenta : Qt::blue);
+        QColor color = objectColorFromStrings(lineColorStr, lineStyleStr, isCrosswalk, isArrow);
         const int radius = 8;
 
-        painter.setPen(QPen(color, 2));
+        QPen pen(color, 2, penStyleFromString(lineStyleStr));
+        painter.setPen(pen);
         painter.setBrush(QBrush(color, Qt::SolidPattern));
         painter.drawEllipse(pos, radius, radius);
 

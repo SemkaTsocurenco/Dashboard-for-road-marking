@@ -15,6 +15,15 @@ namespace viewmodels {
         objects_.reserve(model.size());
 
         for (const auto& obj : model) {
+            qDebug() << "MarkingObject from domain: x=" << obj.xMeters()
+                     << "y=" << obj.yMeters()
+                     << "length=" << obj.lengthMeters()
+                     << "width=" << obj.widthMeters()
+                     << "yaw=" << obj.yawDeg()
+                     << "confidence=" << obj.confidence()
+                     << "valid=" << obj.isValid()
+                     << "color=" << static_cast<int>(obj.lineColor())
+                     << "style=" << static_cast<int>(obj.lineStyle());
             objects_.push_back(obj);
         }
 
@@ -96,6 +105,12 @@ namespace viewmodels {
                 return std::sqrt(x * x + y * y);
             }
 
+            case LineColorRole:
+                return lineColorToString(obj.lineColor());
+
+            case LineStyleRole:
+                return lineStyleToString(obj.lineStyle());
+
             default:
                 return {};
         }
@@ -115,7 +130,9 @@ namespace viewmodels {
             {IsArrowRole, "isArrow"},
             {IsValidRole, "isValid"},
             {AreaRole, "area"},
-            {DistanceRole, "distance"}
+            {DistanceRole, "distance"},
+            {LineColorRole, "lineColor"},
+            {LineStyleRole, "lineStyle"}
         };
     }
 
@@ -126,6 +143,34 @@ namespace viewmodels {
             case laneproto::MarkingClassId::Arrow:
                 return QStringLiteral("Arrow");
             case laneproto::MarkingClassId::Unknown:
+            default:
+                return QStringLiteral("Unknown");
+        }
+    }
+
+    QString MarkingObjectListModel::lineColorToString(laneproto::LineColor color) const {
+        switch (color) {
+            case laneproto::LineColor::White:
+                return QStringLiteral("White");
+            case laneproto::LineColor::Yellow:
+                return QStringLiteral("Yellow");
+            case laneproto::LineColor::Red:
+                return QStringLiteral("Red");
+            case laneproto::LineColor::Unknown:
+            default:
+                return QStringLiteral("Unknown");
+        }
+    }
+
+    QString MarkingObjectListModel::lineStyleToString(laneproto::LineStyle style) const {
+        switch (style) {
+            case laneproto::LineStyle::Solid:
+                return QStringLiteral("Solid");
+            case laneproto::LineStyle::Dashed:
+                return QStringLiteral("Dashed");
+            case laneproto::LineStyle::Double:
+                return QStringLiteral("Double");
+            case laneproto::LineStyle::Unknown:
             default:
                 return QStringLiteral("Unknown");
         }

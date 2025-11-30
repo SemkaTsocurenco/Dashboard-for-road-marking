@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QObject>
+#include <QVariantList>
+#include <QPointF>
 #include "LaneState.h"
 
 namespace viewmodels {
@@ -18,6 +20,15 @@ namespace viewmodels {
         Q_PROPERTY(int qualityPercent READ qualityPercent NOTIFY qualityChanged)
         Q_PROPERTY(bool isQualityGood READ isQualityGood NOTIFY qualityChanged)
         Q_PROPERTY(quint64 timestampMs READ timestampMs NOTIFY timestampChanged)
+        Q_PROPERTY(bool hasDetails READ hasDetails NOTIFY detailsChanged)
+        Q_PROPERTY(QString laneColorLeft READ laneColorLeft NOTIFY laneColorLeftChanged)
+        Q_PROPERTY(QString laneColorRight READ laneColorRight NOTIFY laneColorRightChanged)
+        Q_PROPERTY(float laneWidthLeftMeters READ laneWidthLeftMeters NOTIFY laneWidthLeftChanged)
+        Q_PROPERTY(float laneWidthRightMeters READ laneWidthRightMeters NOTIFY laneWidthRightChanged)
+        Q_PROPERTY(int laneQualityLeftPercent READ laneQualityLeftPercent NOTIFY laneQualityLeftChanged)
+        Q_PROPERTY(int laneQualityRightPercent READ laneQualityRightPercent NOTIFY laneQualityRightChanged)
+        Q_PROPERTY(QVariantList leftPoints READ leftPoints NOTIFY lanePointsChanged)
+        Q_PROPERTY(QVariantList rightPoints READ rightPoints NOTIFY lanePointsChanged)
 
     public:
         explicit LaneStateViewModel(QObject* parent = nullptr);
@@ -36,6 +47,15 @@ namespace viewmodels {
         int qualityPercent() const noexcept { return quality_percent_; }
         bool isQualityGood() const noexcept { return is_quality_good_; }
         quint64 timestampMs() const noexcept { return timestamp_ms_; }
+        bool hasDetails() const noexcept { return has_details_; }
+        QString laneColorLeft() const { return lane_color_left_; }
+        QString laneColorRight() const { return lane_color_right_; }
+        float laneWidthLeftMeters() const noexcept { return lane_width_left_m_; }
+        float laneWidthRightMeters() const noexcept { return lane_width_right_m_; }
+        int laneQualityLeftPercent() const noexcept { return lane_quality_left_percent_; }
+        int laneQualityRightPercent() const noexcept { return lane_quality_right_percent_; }
+        QVariantList leftPoints() const { return left_points_; }
+        QVariantList rightPoints() const { return right_points_; }
 
     signals:
         void validChanged(bool valid);
@@ -47,9 +67,20 @@ namespace viewmodels {
         void centerOffsetChanged(float offset);
         void qualityChanged();
         void timestampChanged(quint64 timestamp);
+        void detailsChanged(bool hasDetails);
+        void laneColorLeftChanged();
+        void laneColorRightChanged();
+        void laneWidthLeftChanged(float width);
+        void laneWidthRightChanged(float width);
+        void laneQualityLeftChanged(int quality);
+        void laneQualityRightChanged(int quality);
+        void lanePointsChanged();
 
     private:
         QString laneTypeToString(laneproto::LaneType type) const;
+        QString lineColorToString(laneproto::LineColor color) const;
+        QVariantList toVariantPoints(const std::array<laneproto::LanePoint, 3>& points,
+                                     std::uint8_t count) const;
 
         bool valid_{false};
         laneproto::LaneType lane_type_left_{};
@@ -61,6 +92,15 @@ namespace viewmodels {
         int quality_percent_{0};
         bool is_quality_good_{false};
         quint64 timestamp_ms_{0};
+        bool has_details_{false};
+        QString lane_color_left_{"Unknown"};
+        QString lane_color_right_{"Unknown"};
+        float lane_width_left_m_{0.0f};
+        float lane_width_right_m_{0.0f};
+        int lane_quality_left_percent_{0};
+        int lane_quality_right_percent_{0};
+        QVariantList left_points_;
+        QVariantList right_points_;
     };
 
 }

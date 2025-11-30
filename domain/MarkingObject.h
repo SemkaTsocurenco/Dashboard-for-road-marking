@@ -16,6 +16,8 @@ namespace domain {
         float yaw_deg_ = 0.0f;
         std::uint8_t confidence_ = 0;
         std::uint8_t flags_ = 0;
+        laneproto::LineColor line_color_{laneproto::LineColor::Unknown};
+        laneproto::LineStyle line_style_{laneproto::LineStyle::Unknown};
 
     public:
         MarkingObject() noexcept = default;
@@ -31,6 +33,8 @@ namespace domain {
         float yawDeg() const noexcept;
         std::uint8_t confidence() const noexcept;
         std::uint8_t rawFlags() const noexcept;
+        laneproto::LineColor lineColor() const noexcept { return line_color_; }
+        laneproto::LineStyle lineStyle() const noexcept { return line_style_; }
 
         bool isCrosswalk() const noexcept;
         bool isArrow() const noexcept;
