@@ -23,16 +23,22 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Поиск зависимостей
+find_package(PkgConfig REQUIRED)
 find_package(Qt6 COMPONENTS Core Gui Widgets Network Multimedia Qml Quick Quick3D QuickWidgets REQUIRED)
+pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0 gstreamer-app-1.0 gstreamer-video-1.0)
 
-# OpenCV опционально (для обработки изображений)
-find_package(OpenCV QUIET)
-if(OpenCV_FOUND)
-    message(STATUS "OpenCV found: ${OpenCV_VERSION}")
-    set(HAVE_OPENCV TRUE)
-else()
-    message(STATUS "OpenCV not found - building without OpenCV support")
-    set(HAVE_OPENCV FALSE)
+# OpenCV по умолчанию отключён, т.к. системная сборка тянет Qt5 и конфликтует с Qt6.
+# Включайте только если у вас OpenCV, собранный с Qt6.
+option(ENABLE_OPENCV "Enable OpenCV support (requires OpenCV built with Qt6)" OFF)
+set(HAVE_OPENCV FALSE)
+if(ENABLE_OPENCV)
+    find_package(OpenCV QUIET)
+    if(OpenCV_FOUND)
+        message(STATUS "OpenCV found: ${OpenCV_VERSION}")
+        set(HAVE_OPENCV TRUE)
+    else()
+        message(WARNING "OpenCV requested but not found - building without OpenCV support")
+    endif()
 endif()
 
 include_directories(
@@ -77,7 +83,15 @@ add_executable(dashboard
 # Подключение заголовочных файлов
 target_include_directories(dashboard PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${GSTREAMER_INCLUDE_DIRS}
 )
+
+# Добавление OpenCV, если найден
+if(HAVE_OPENCV)
+    target_include_directories(dashboard PRIVATE ${OpenCV_INCLUDE_DIRS})
+    target_compile_definitions(dashboard PRIVATE HAVE_OPENCV)
+endif()
+
 
 # Линковка библиотек
 target_link_libraries(dashboard
@@ -91,17 +105,18 @@ target_link_libraries(dashboard
         Qt6::Quick
         Qt6::Quick3D
         Qt6::QuickWidgets
+        ${GSTREAMER_LIBRARIES}
 )
+
+if(HAVE_OPENCV)
+    target_link_libraries(dashboard PRIVATE ${OpenCV_LIBS})
+endif()
+
+target_compile_options(dashboard PRIVATE ${GSTREAMER_CFLAGS_OTHER})
+target_link_directories(dashboard PRIVATE ${GSTREAMER_LIBRARY_DIRS})
 
 
 # Подключаем QML-ресурсы (AUTORCC соберёт .qrc)
 target_sources(dashboard PRIVATE
     resources/resources.qrc
 )
-
-# Добавление OpenCV, если найден
-if(HAVE_OPENCV)
-    target_include_directories(dashboard PRIVATE ${OpenCV_INCLUDE_DIRS})
-    target_link_libraries(dashboard ${OpenCV_LIBS})
-    target_compile_definitions(dashboard PRIVATE HAVE_OPENCV)
-endif()

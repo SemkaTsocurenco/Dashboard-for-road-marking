@@ -1,6 +1,7 @@
 #include "AppController.hpp"
 #include "ConfigurationManager.hpp"
 #include "LoggerMacros.hpp"
+#include <QUrl>
 
 namespace app {
 
@@ -44,14 +45,29 @@ bool AppController::initialize(const QString& config_path,
     // Apply CLI overrides for host/port and video URL
     if (!override_host.isEmpty()) {
         config_.network.host = override_host;
-        const quint16 video_port = override_port > 0 ? override_port : 5000;
-        config_.video.source_url = QString("rtsp://%1:%2/stream").arg(override_host).arg(video_port);
-        LOG_INFO << "Override host applied: " << override_host.toStdString()
-                 << ", video URL set to " << config_.video.source_url.toStdString();
+        LOG_INFO << "Override host applied: " << override_host.toStdString();
     }
     if (override_port > 0) {
         config_.network.port = override_port;
         LOG_INFO << "Override port applied: " << override_port;
+    }
+
+    if (!override_host.isEmpty() || override_port > 0) {
+        QUrl video_url(config_.video.source_url);
+        if (video_url.isValid() && video_url.scheme() == "rtsp") {
+            if (!override_host.isEmpty())
+                video_url.setHost(override_host);
+            if (override_port > 0)
+                video_url.setPort(override_port);
+            else if (video_url.port() <= 0)
+                video_url.setPort(5000);
+
+            config_.video.source_url = video_url.toString();
+            LOG_INFO << "RTSP video URL updated to " << config_.video.source_url.toStdString();
+        } else {
+            LOG_DEBUG << "Video URL override skipped (non-RTSP source): "
+                      << config_.video.source_url.toStdString();
+        }
     }
 
     try {
@@ -139,8 +155,8 @@ void AppController::configureComponents()
     connection_manager_->setWarningEngineConfig(warning_config);
     LOG_DEBUG << "WarningEngine configured";
 
-    video_widget_->setSourceUrl(config_.video.source_url);
     video_widget_->setAutoStart(config_.video.auto_start);
+    video_widget_->setSourceUrl(config_.video.source_url);
     LOG_DEBUG << "VideoWidget configured: url=" << config_.video.source_url.toStdString();
 
     video_widget_->addFrameProcessor(overlay_processor_);

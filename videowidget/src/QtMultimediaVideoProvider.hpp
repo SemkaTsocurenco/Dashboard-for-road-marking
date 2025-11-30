@@ -1,9 +1,12 @@
 #pragma once
 
-#include <QMediaPlayer>
-#include <QVideoSink>
 #include <QElapsedTimer>
-#include <QVideoFrame>
+#include <QTimer>
+#include <atomic>
+
+#include <gst/gst.h>
+#include <gst/app/gstappsink.h>
+#include <gst/video/video.h>
 
 #include "IVideoFrameProvider.hpp"
 #include "BasicFrameHandle.hpp"
@@ -27,14 +30,24 @@ namespace video {
         [[nodiscard]] double frameRate() const override;
 
     private slots:
-        void onVideoFrameChanged(const QVideoFrame& frame);
-        void onMediaError(QMediaPlayer::Error error, const QString& errorString);
-        void onMediaStatusChanged(QMediaPlayer::MediaStatus status);
-        void onPlaybackStateChanged(QMediaPlayer::PlaybackState state);
+        void pollBusMessages();
 
     private:
-        QMediaPlayer m_player;
-        QVideoSink  m_videoSink;
+        QString buildPipelineDescription(QString& error) const;
+        bool setupPipeline(QString& error);
+        void cleanupPipeline();
+        void handlePipelineError(const QString& message);
+        void resetFps();
+        void updateState(ProviderState newState);
+
+        static GstFlowReturn onNewSample(GstAppSink* sink, gpointer user_data);
+        void handleSample(GstSample* sample);
+        void handleBusMessage(GstMessage* message);
+        void updateFps();
+
+        GstElement* m_pipeline = nullptr;
+        GstAppSink* m_appSink = nullptr;
+        GstBus* m_bus = nullptr;
 
         QString m_source;
         ProviderState m_state = ProviderState::Stopped;
@@ -44,7 +57,6 @@ namespace video {
         int m_framesInSecond = 0;
         double m_currentFps = 0.0;
 
-        void updateState(ProviderState newState);
-        void updateFps();
+        QTimer m_busTimer;
     };
 }

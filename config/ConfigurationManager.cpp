@@ -133,8 +133,11 @@ bool ConfigurationManager::validateVideoConfig(const VideoConfig& cfg, QString& 
     if (cfg.source_url.isEmpty())
         return true; // will be replaced by fallback in fromJson
 
+    if (cfg.source_url.startsWith("gst-pipeline:"))
+        return true;
+
     if (!cfg.source_url.contains("://")) {
-        error = "Video source URL must contain protocol (e.g., rtsp://, http://)";
+        error = "Video source URL must contain protocol (e.g., udp://, rtsp://, or use gst-pipeline: prefix)";
         return false;
     }
 

@@ -24,7 +24,7 @@ struct NetworkConfig {
 
 
 struct VideoConfig {
-    QString source_url{"rtsp://127.0.0.1:8554/stream"};
+    QString source_url{"udp://239.0.0.1:5000"};
     bool auto_start{false};
 
     QJsonObject toJson() const;

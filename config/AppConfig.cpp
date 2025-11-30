@@ -65,7 +65,7 @@ VideoConfig VideoConfig::fromJson(const QJsonObject& json) {
         config.auto_start = json["auto_start"].toBool();
 
     if (config.source_url.isEmpty())
-        config.source_url = QStringLiteral("rtsp://example/stream");
+        config.source_url = QStringLiteral("udp://239.0.0.1:5000");
 
     return config;
 }
