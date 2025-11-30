@@ -130,10 +130,8 @@ bool ConfigurationManager::validateNetworkConfig(const NetworkConfig& cfg, QStri
 }
 
 bool ConfigurationManager::validateVideoConfig(const VideoConfig& cfg, QString& error) {
-    if (cfg.source_url.isEmpty()) {
-        error = "Video source URL cannot be empty";
-        return false;
-    }
+    if (cfg.source_url.isEmpty())
+        return true; // will be replaced by fallback in fromJson
 
     if (!cfg.source_url.contains("://")) {
         error = "Video source URL must contain protocol (e.g., rtsp://, http://)";

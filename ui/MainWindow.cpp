@@ -3,6 +3,7 @@
 #include <QMessageBox>
 #include <QMenu>
 #include <QAction>
+#include <QTimer>
 
 namespace ui {
 
@@ -35,8 +36,7 @@ void MainWindow::setupUi()
 
     setupMenuBar();
     setupControlPanel();
-    setupVideoPanel();
-    setupInfoPanels();
+    setupContentPanel();
     setupStatusBar();
 }
 
@@ -83,69 +83,33 @@ void MainWindow::setupControlPanel()
     main_layout_->addWidget(control_panel_);
 }
 
-void MainWindow::setupVideoPanel()
+void MainWindow::setupContentPanel()
 {
-    video_container_ = new QWidget(this);
-    video_container_->setMinimumSize(640, 480);
-    video_container_->setStyleSheet("background-color: black;");
-
-    video_layout_ = new QVBoxLayout(video_container_);
-    video_layout_->setContentsMargins(0, 0, 0, 0);
+    content_splitter_ = new QSplitter(Qt::Horizontal, this);
+    content_splitter_->setChildrenCollapsible(false);
 
     auto* video_widget = controller_->videoWidget();
     if (video_widget) {
-        video_layout_->addWidget(video_widget);
-    } else {
-        auto* placeholder = new QLabel("No Video Widget", video_container_);
-        placeholder->setAlignment(Qt::AlignCenter);
-        placeholder->setStyleSheet("color: white; font-size: 24px;");
-        video_layout_->addWidget(placeholder);
+        video_widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        video_widget->setMinimumSize(400, 300);
+        content_splitter_->addWidget(video_widget);
     }
 
-    main_layout_->addWidget(video_container_, 1); 
-}
+    dashboard_widget_ = new DashboardWidget(this);
+    dashboard_widget_->setAppController(controller_);
+    content_splitter_->addWidget(dashboard_widget_);
 
-void MainWindow::setupInfoPanels()
-{
-    auto* info_layout = new QHBoxLayout();
+    content_splitter_->setStretchFactor(0, 1);
+    content_splitter_->setStretchFactor(1, 1);
+    // Force initial 50/50 split once layout is calculated
+    QTimer::singleShot(0, this, [this]() {
+        if (content_splitter_) {
+            const int half = qMax(400, this->width() / 2);
+            content_splitter_->setSizes({half, half});
+        }
+    });
 
-    lane_info_panel_ = new QGroupBox("Lane State", this);
-    auto* lane_layout = new QVBoxLayout(lane_info_panel_);
-
-    lane_valid_label_ = new QLabel("Valid: No", lane_info_panel_);
-    lane_width_label_ = new QLabel("Width: N/A", lane_info_panel_);
-    lane_offset_label_ = new QLabel("Center Offset: N/A", lane_info_panel_);
-    lane_quality_label_ = new QLabel("Quality: N/A", lane_info_panel_);
-
-    lane_layout->addWidget(lane_valid_label_);
-    lane_layout->addWidget(lane_width_label_);
-    lane_layout->addWidget(lane_offset_label_);
-    lane_layout->addWidget(lane_quality_label_);
-    lane_layout->addStretch();
-
-    info_layout->addWidget(lane_info_panel_);
-
-    warning_panel_ = new QGroupBox("Warnings", this);
-    auto* warning_layout = new QVBoxLayout(warning_panel_);
-    auto* warning_label = new QLabel("No active warnings", warning_panel_);
-    warning_layout->addWidget(warning_label);
-    warning_layout->addStretch();
-
-    info_layout->addWidget(warning_panel_);
-
-    sync_info_panel_ = new QGroupBox("Synchronization", this);
-    auto* sync_layout = new QVBoxLayout(sync_info_panel_);
-
-    sync_diff_label_ = new QLabel("Timestamp Diff: N/A", sync_info_panel_);
-    sync_status_label_info_ = new QLabel("Status: N/A", sync_info_panel_);
-
-    sync_layout->addWidget(sync_diff_label_);
-    sync_layout->addWidget(sync_status_label_info_);
-    sync_layout->addStretch();
-
-    info_layout->addWidget(sync_info_panel_);
-
-    main_layout_->addLayout(info_layout);
+    main_layout_->addWidget(content_splitter_, 1);
 }
 
 void MainWindow::setupStatusBar()
@@ -183,26 +147,6 @@ void MainWindow::setupConnections()
             this, [this](const QString& error) {
                 QMessageBox::critical(this, "Critical Error", error);
             });
-
-    auto* lane_vm = controller_->laneViewModel();
-    if (lane_vm) {
-        connect(lane_vm, &viewmodels::LaneStateViewModel::validChanged,
-                this, &MainWindow::onLaneStateChanged);
-        connect(lane_vm, &viewmodels::LaneStateViewModel::laneWidthChanged,
-                this, &MainWindow::onLaneStateChanged);
-        connect(lane_vm, &viewmodels::LaneStateViewModel::centerOffsetChanged,
-                this, &MainWindow::onLaneStateChanged);
-        connect(lane_vm, &viewmodels::LaneStateViewModel::qualityChanged,
-                this, &MainWindow::onLaneStateChanged);
-    }
-
-    auto* sync_monitor = controller_->syncMonitor();
-    if (sync_monitor) {
-        connect(sync_monitor, &app::SynchronizationMonitor::timestampDiffChanged,
-                this, &MainWindow::onSyncStatusChanged);
-        connect(sync_monitor, &app::SynchronizationMonitor::synchronizationChanged,
-                this, &MainWindow::onSyncStatusChanged);
-    }
 }
 
 
@@ -269,43 +213,6 @@ void MainWindow::onVideoConnectionChanged(bool connected)
     } else {
         video_status_label_->setText("Video: Disconnected");
         video_status_label_->setStyleSheet("color: red;");
-    }
-}
-
-void MainWindow::onLaneStateChanged()
-{
-    auto* lane_vm = controller_->laneViewModel();
-    if (!lane_vm) return;
-
-    lane_valid_label_->setText(QString("Valid: %1").arg(lane_vm->isValid() ? "Yes" : "No"));
-    lane_width_label_->setText(QString("Width: %1 m").arg(lane_vm->laneWidthMeters(), 0, 'f', 2));
-    lane_offset_label_->setText(QString("Center Offset: %1 m").arg(lane_vm->centerOffsetMeters(), 0, 'f', 2));
-    lane_quality_label_->setText(QString("Quality: %1%").arg(lane_vm->qualityPercent()));
-
-    if (lane_vm->isQualityGood()) {
-        lane_quality_label_->setStyleSheet("color: green;");
-    } else {
-        lane_quality_label_->setStyleSheet("color: orange;");
-    }
-}
-
-void MainWindow::onSyncStatusChanged()
-{
-    auto* sync_monitor = controller_->syncMonitor();
-    if (!sync_monitor) return;
-
-    sync_diff_label_->setText(QString("Timestamp Diff: %1 ms").arg(sync_monitor->timestampDiffMs()));
-
-    if (sync_monitor->isSynchronized()) {
-        sync_status_label_info_->setText("Status: Synchronized");
-        sync_status_label_info_->setStyleSheet("color: green;");
-        sync_status_label_->setText("Sync: OK");
-        sync_status_label_->setStyleSheet("color: green;");
-    } else {
-        sync_status_label_info_->setText("Status: Desynchronized");
-        sync_status_label_info_->setStyleSheet("color: red;");
-        sync_status_label_->setText("Sync: WARN");
-        sync_status_label_->setStyleSheet("color: red;");
     }
 }
 

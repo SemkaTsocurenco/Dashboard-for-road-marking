@@ -22,7 +22,9 @@ AppController::~AppController()
 }
 
 
-bool AppController::initialize(const QString& config_path)
+bool AppController::initialize(const QString& config_path,
+                               const QString& override_host,
+                               quint16 override_port)
 {
     LOG_INFO << "Initializing AppController with config: " << config_path.toStdString();
 
@@ -37,6 +39,19 @@ bool AppController::initialize(const QString& config_path)
         LOG_ERROR << "Unexpected error loading config: " << e.what();
         LOG_WARN << "Using default configuration";
         config_ = config::ConfigurationManager::defaultConfig();
+    }
+
+    // Apply CLI overrides for host/port and video URL
+    if (!override_host.isEmpty()) {
+        config_.network.host = override_host;
+        const quint16 video_port = override_port > 0 ? override_port : 5000;
+        config_.video.source_url = QString("rtsp://%1:%2/stream").arg(override_host).arg(video_port);
+        LOG_INFO << "Override host applied: " << override_host.toStdString()
+                 << ", video URL set to " << config_.video.source_url.toStdString();
+    }
+    if (override_port > 0) {
+        config_.network.port = override_port;
+        LOG_INFO << "Override port applied: " << override_port;
     }
 
     try {

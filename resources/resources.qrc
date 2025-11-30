@@ -1,0 +1,13 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+  <qresource prefix="/qml">
+        <file alias="Dashboard.qml">../ui/qml/Dashboard.qml</file>
+        <file alias="CarScene.qml">../ui/qml/CarScene.qml</file>
+        <file alias="CarModel.qml">../ui/qml/CarModel.qml</file>
+        <file alias="MarkingLine.qml">../ui/qml/MarkingLine.qml</file>
+        <file alias="RoadPlane.qml">../ui/qml/RoadPlane.qml</file>
+        <file alias="WarningPanel.qml">../ui/qml/WarningPanel.qml</file>
+        <file alias="CenterOffsetIndicator.qml">../ui/qml/CenterOffsetIndicator.qml</file>
+        <file alias="ConnectionStatus.qml">../ui/qml/ConnectionStatus.qml</file>
+  </qresource>
+</RCC>

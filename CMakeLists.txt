@@ -23,7 +23,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Поиск зависимостей
-find_package(Qt6 COMPONENTS Core Gui Widgets Network Multimedia REQUIRED)
+find_package(Qt6 COMPONENTS Core Gui Widgets Network Multimedia Qml Quick Quick3D QuickWidgets REQUIRED)
 
 # OpenCV опционально (для обработки изображений)
 find_package(OpenCV QUIET)
@@ -81,11 +81,22 @@ target_include_directories(dashboard PRIVATE
 
 # Линковка библиотек
 target_link_libraries(dashboard
-    Qt6::Core
-    Qt6::Gui
-    Qt6::Widgets
-    Qt6::Network
-    Qt6::Multimedia
+    PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Widgets
+        Qt6::Network
+        Qt6::Multimedia
+        Qt6::Qml
+        Qt6::Quick
+        Qt6::Quick3D
+        Qt6::QuickWidgets
+)
+
+
+# Подключаем QML-ресурсы (AUTORCC соберёт .qrc)
+target_sources(dashboard PRIVATE
+    resources/resources.qrc
 )
 
 # Добавление OpenCV, если найден

@@ -13,7 +13,7 @@ namespace config {
 
 struct NetworkConfig {
     QString host{"127.0.0.1"};
-    quint16 port{5000};
+    quint16 port{9000};
     int reconnect_interval_ms{5000};
     int max_reconnect_attempts{0};  // 0 = unlimited
     bool auto_reconnect{true};

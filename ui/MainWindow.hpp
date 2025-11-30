@@ -10,8 +10,10 @@
 #include <QPushButton>
 #include <QLineEdit>
 #include <QCloseEvent>
+#include <QSplitter>
 
 #include "AppController.hpp"
+#include "DashboardWidget.hpp"
 
 namespace ui {
 
@@ -46,27 +48,14 @@ private:
     QLineEdit* host_input_;
     QLineEdit* port_input_;
 
-    QWidget* video_container_;
-    QVBoxLayout* video_layout_;
-
-    QGroupBox* lane_info_panel_;
-    QGroupBox* warning_panel_;
-    QGroupBox* sync_info_panel_;
-
-    QLabel* lane_valid_label_;
-    QLabel* lane_width_label_;
-    QLabel* lane_offset_label_;
-    QLabel* lane_quality_label_;
-
-    QLabel* sync_diff_label_;
-    QLabel* sync_status_label_info_;
+    QSplitter* content_splitter_;
+    DashboardWidget* dashboard_widget_;
 
     void setupUi();
     void setupMenuBar();
     void setupStatusBar();
     void setupControlPanel();
-    void setupVideoPanel();
-    void setupInfoPanels();
+    void setupContentPanel();
     void setupConnections();
 
 private slots:
@@ -76,8 +65,6 @@ private slots:
     void onConnectionStateChanged(bool fully_connected);
     void onDataConnectionChanged(bool connected);
     void onVideoConnectionChanged(bool connected);
-    void onLaneStateChanged();
-    void onSyncStatusChanged();
 
     void onAboutAction();
     void onExitAction();

@@ -43,7 +43,9 @@ public:
     explicit AppController(QObject* parent = nullptr);
     ~AppController() override;
 
-    bool initialize(const QString& config_path = "config.json");
+    bool initialize(const QString& config_path = "config.json",
+                    const QString& override_host = QString(),
+                    quint16 override_port = 0);
     void shutdown();
 
     network::ConnectionManager* connectionManager() const

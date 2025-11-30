@@ -36,6 +36,7 @@ namespace  logger {
 
     Logger& Logger::instance() noexcept {
         static Logger log;
+        log.load_env_level();
         return log;
     }
 

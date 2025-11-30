@@ -7,7 +7,7 @@
     "auto_reconnect": true
   },
   "video": {
-    "source_url": "rtsp://192.168.1.100:8554/stream",
+    "source_url": "rtsp://127.0.0.1:5000/stream",
     "auto_start": false
   },
   "warning": {

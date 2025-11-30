@@ -19,9 +19,19 @@ NetworkConfig NetworkConfig::fromJson(const QJsonObject& json) {
 
     if (json.contains("host"))
         config.host = json["host"].toString();
+    if (json.contains("dashboard_ip"))
+        config.host = json["dashboard_ip"].toString();
 
     if (json.contains("port"))
         config.port = static_cast<quint16>(json["port"].toInt());
+    if (json.contains("dashboard_port"))
+        config.port = static_cast<quint16>(json["dashboard_port"].toInt());
+
+    // Fallbacks if config is empty/zero
+    if (config.host.isEmpty())
+        config.host = QStringLiteral("127.0.0.1");
+    if (config.port == 0)
+        config.port = 9000;
 
     if (json.contains("reconnect_interval_ms"))
         config.reconnect_interval_ms = json["reconnect_interval_ms"].toInt();
@@ -48,9 +58,14 @@ VideoConfig VideoConfig::fromJson(const QJsonObject& json) {
 
     if (json.contains("source_url"))
         config.source_url = json["source_url"].toString();
+    if (json.contains("rtsp_url"))
+        config.source_url = json["rtsp_url"].toString();
 
     if (json.contains("auto_start"))
         config.auto_start = json["auto_start"].toBool();
+
+    if (config.source_url.isEmpty())
+        config.source_url = QStringLiteral("rtsp://example/stream");
 
     return config;
 }
