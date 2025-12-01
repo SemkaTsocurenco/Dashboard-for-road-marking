@@ -55,7 +55,11 @@ namespace domain {
     }
 
     bool MarkingObject::isArrow() const noexcept {
-        return class_id_ == laneproto::MarkingClassId::Arrow;
+        return class_id_ == laneproto::MarkingClassId::ArrowLeft
+            || class_id_ == laneproto::MarkingClassId::ArrowRight
+            || class_id_ == laneproto::MarkingClassId::ArrowStraight
+            || class_id_ == laneproto::MarkingClassId::ArrowLeftStraight
+            || class_id_ == laneproto::MarkingClassId::ArrowRightStraight;
     }
 
     bool MarkingObject::hasFlag(std::uint8_t mask) const noexcept {

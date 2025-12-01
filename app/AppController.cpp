@@ -197,6 +197,15 @@ void AppController::wireComponents()
             });
 
     connect(connection_manager_,
+            &network::ConnectionManager::fittedLinesModelUpdated,
+            this, [this]() {
+                auto* marking_processor = dynamic_cast<video::MarkingOverlayProcessor*>(overlay_processor_.data());
+                if (marking_processor) {
+                    marking_processor->updateFittedLines(connection_manager_->fittedLinesModel());
+                }
+            });
+
+    connect(connection_manager_,
             &network::ConnectionManager::stateChanged,
             this, &AppController::onDataConnectionStateChanged);
 

@@ -7,6 +7,7 @@
 #include "TcpReaderWorker.h"
 #include "proto_parser.h"
 #include "MarkingObject.h"
+#include "FittedLine.h"
 #include "Warning.h"
 #include "WarningEngine.h"
 #include "LaneState.h"
@@ -63,6 +64,7 @@ namespace network {
 
         const domain::LaneState& laneState() const noexcept { return lane_state_; }
         const domain::MarkingObjectModel& markingModel() const noexcept { return marking_model_; }
+        const domain::FittedLinesModel& fittedLinesModel() const noexcept { return fitted_lines_model_; }
         const domain::WarningModel& warningModel() const noexcept { return warning_model_; }
 
         viewmodels::LaneStateViewModel* laneViewModel() const noexcept { return lane_view_model_; }
@@ -83,6 +85,7 @@ namespace network {
         void reconnectAttempt(int attempt, int maxAttempts);
         void laneStateUpdated();
         void markingModelUpdated();
+        void fittedLinesModelUpdated();
         void warningModelUpdated();
 
 
@@ -102,6 +105,7 @@ namespace network {
         void markingObjectsReceived(const laneproto::MarkingObjects& objects);
         void laneDetailsReceived(const laneproto::LaneDetails& details);
         void markingObjectsExReceived(const laneproto::MarkingObjects& objects);
+        void fittedLinesReceived(const laneproto::FittedLines& lines);
 
         void updateWarnings(std::uint64_t timestamp_ms);
 
@@ -122,6 +126,7 @@ namespace network {
 
         domain::LaneState lane_state_;
         domain::MarkingObjectModel marking_model_;
+        domain::FittedLinesModel fitted_lines_model_;
         domain::WarningModel warning_model_;
         domain::WarningEngine warning_engine_;
 

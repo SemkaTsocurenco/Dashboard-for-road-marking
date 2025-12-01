@@ -197,6 +197,13 @@ namespace network {
         owner_.markingObjectsExParsed(msg);
     }
 
+    void TcpReaderWorker::MessageHandler::onFittedLines(const laneproto::FittedLines& msg){
+        LOG_DEBUG << "FittedLines received: seq=" << static_cast<int>(msg.seq)
+                  << ", timestamp=" << msg.timestamp_ms
+                  << ", lines=" << msg.lines.size();
+        owner_.fittedLinesParsed(msg);
+    }
+
     void TcpReaderWorker::MessageHandler::onParseError(const laneproto::ParseError& error){
         std::string error_code_str;
         switch (error.code) {
@@ -232,6 +239,9 @@ namespace network {
                 break;
             case laneproto::ParseErrorCode::MarkingExFormat:
                 error_code_str = "MarkingExFormat";
+                break;
+            case laneproto::ParseErrorCode::FittedLinesFormat:
+                error_code_str = "FittedLinesFormat";
                 break;
         }
 

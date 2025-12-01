@@ -162,6 +162,8 @@ namespace network {
                 this, &ConnectionManager::laneDetailsReceived);
         connect(worker_, &TcpReaderWorker::markingObjectsExParsed,
                 this, &ConnectionManager::markingObjectsExReceived);
+        connect(worker_, &TcpReaderWorker::fittedLinesParsed,
+                this, &ConnectionManager::fittedLinesReceived);
         connect(worker_, &TcpReaderWorker::parseErrorOccurred,
                 this, &ConnectionManager::parseErrorReceived);
 
@@ -360,6 +362,13 @@ namespace network {
             const std::uint64_t timestamp_ms = marking_model_.timestampMs();
             updateWarnings(timestamp_ms);
         }
+    }
+
+    void ConnectionManager::fittedLinesReceived(const laneproto::FittedLines& lines){
+        fitted_lines_model_.updateFromProto(lines);
+        LOG_DEBUG << "FittedLinesModel updated: " << fitted_lines_model_;
+
+        emit fittedLinesModelUpdated();
     }
 
 }

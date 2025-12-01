@@ -138,10 +138,42 @@ namespace viewmodels {
 
     QString MarkingObjectListModel::classIdToString(laneproto::MarkingClassId id) const {
         switch (id) {
+            case laneproto::MarkingClassId::BoxJunction:
+                return QStringLiteral("Box Junction");
             case laneproto::MarkingClassId::Crosswalk:
                 return QStringLiteral("Crosswalk");
-            case laneproto::MarkingClassId::Arrow:
-                return QStringLiteral("Arrow");
+            case laneproto::MarkingClassId::StopLine:
+                return QStringLiteral("Stop Line");
+            case laneproto::MarkingClassId::SolidSingleWhite:
+                return QStringLiteral("Solid White");
+            case laneproto::MarkingClassId::SolidSingleYellow:
+                return QStringLiteral("Solid Yellow");
+            case laneproto::MarkingClassId::SolidSingleRed:
+                return QStringLiteral("Solid Red");
+            case laneproto::MarkingClassId::DoubleWhite:
+                return QStringLiteral("Double White");
+            case laneproto::MarkingClassId::DoubleYellow:
+                return QStringLiteral("Double Yellow");
+            case laneproto::MarkingClassId::DashedWhite:
+                return QStringLiteral("Dashed White");
+            case laneproto::MarkingClassId::DashedYellow:
+                return QStringLiteral("Dashed Yellow");
+            case laneproto::MarkingClassId::ArrowLeft:
+                return QStringLiteral("Arrow Left");
+            case laneproto::MarkingClassId::ArrowStraight:
+                return QStringLiteral("Arrow Straight");
+            case laneproto::MarkingClassId::ArrowRight:
+                return QStringLiteral("Arrow Right");
+            case laneproto::MarkingClassId::ArrowLeftStraight:
+                return QStringLiteral("Arrow Left+Straight");
+            case laneproto::MarkingClassId::ArrowRightStraight:
+                return QStringLiteral("Arrow Right+Straight");
+            case laneproto::MarkingClassId::ChannelizingLine:
+                return QStringLiteral("Channelizing Line");
+            case laneproto::MarkingClassId::MotorIcon:
+                return QStringLiteral("Motor Icon");
+            case laneproto::MarkingClassId::BikeIcon:
+                return QStringLiteral("Bike Icon");
             case laneproto::MarkingClassId::Unknown:
             default:
                 return QStringLiteral("Unknown");

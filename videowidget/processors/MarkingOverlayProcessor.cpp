@@ -4,7 +4,6 @@
 #include <QBrush>
 #include <QVariant>
 #include <QPointF>
-#include <cmath>
 
 using namespace video;
 
@@ -90,6 +89,13 @@ void MarkingOverlayProcessor::updateMarkings(const domain::MarkingObjectModel& m
     }
 }
 
+void MarkingOverlayProcessor::updateFittedLines(const domain::FittedLinesModel& model)
+{
+    QMutexLocker locker(&m_mutex);
+    m_fittedLinesModel = model;
+    LOG_DEBUG << "FittedLinesModel updated, lines count: " << model.size();
+}
+
 void MarkingOverlayProcessor::setDrawLanes(bool draw)
 {
     QMutexLocker locker(&m_mutex);
@@ -108,6 +114,12 @@ void MarkingOverlayProcessor::setDrawWarnings(bool draw)
     m_drawWarnings = draw;
 }
 
+void MarkingOverlayProcessor::setDrawFittedLines(bool draw)
+{
+    QMutexLocker locker(&m_mutex);
+    m_drawFittedLines = draw;
+}
+
 bool MarkingOverlayProcessor::drawLanes() const
 {
     QMutexLocker locker(&m_mutex);
@@ -124,6 +136,12 @@ bool MarkingOverlayProcessor::drawWarnings() const
 {
     QMutexLocker locker(&m_mutex);
     return m_drawWarnings;
+}
+
+bool MarkingOverlayProcessor::drawFittedLines() const
+{
+    QMutexLocker locker(&m_mutex);
+    return m_drawFittedLines;
 }
 
 void MarkingOverlayProcessor::processFrame(const FrameHandlePtr& frame)
@@ -227,6 +245,10 @@ void MarkingOverlayProcessor::drawOverlay(QImage& image)
 
     const QSize imageSize = image.size();
 
+    if (m_drawFittedLines && m_fittedLinesModel.isValid()) {
+        drawFittedLinesOverlay(painter, imageSize);
+    }
+
     if (m_drawLanes && m_laneStateViewModel) {
         drawLaneOverlay(painter, imageSize);
     }
@@ -245,65 +267,48 @@ void MarkingOverlayProcessor::drawLaneOverlay(QPainter& painter, const QSize& im
     if (!m_laneStateViewModel || !m_laneStateViewModel->isValid())
         return;
 
-    const int centerX = imageSize.width() / 2;
-    const int bottomY = imageSize.height();
-    const int topY = imageSize.height() / 2;
+    // ОТКЛЮЧАЕМ старую отрисовку простых линий - используем FittedLines вместо них!
+    // Старые линии из LaneSummary слишком упрощенные и перекрывают точные FittedLines
 
-    const float leftOffset = m_laneStateViewModel->leftOffsetMeters();
-    const float rightOffset = m_laneStateViewModel->rightOffsetMeters();
-    const float centerOffset = m_laneStateViewModel->centerOffsetMeters();
-
-    const float pixelsPerMeter = imageSize.width() / 10.0f;
-
-    const int leftLineX = centerX + static_cast<int>(leftOffset * pixelsPerMeter);
-    const int rightLineX = centerX + static_cast<int>(rightOffset * pixelsPerMeter);
-    const int centerLineX = centerX + static_cast<int>(centerOffset * pixelsPerMeter);
-
-    const QColor leftColor = laneColorFromString(m_laneStateViewModel->laneColorLeft());
-    const QColor rightColor = laneColorFromString(m_laneStateViewModel->laneColorRight());
-
-    QPen lanePenLeft(leftColor, std::max(2.0f, m_laneStateViewModel->laneWidthLeftMeters() * 10.0f),
-                     penStyleForLaneString(m_laneStateViewModel->laneTypeLeft()));
-    painter.setPen(lanePenLeft);
-    painter.drawLine(leftLineX, bottomY, leftLineX, topY);
-
-    QPen lanePenRight(rightColor, std::max(2.0f, m_laneStateViewModel->laneWidthRightMeters() * 10.0f),
-                      penStyleForLaneString(m_laneStateViewModel->laneTypeRight()));
-    painter.setPen(lanePenRight);
-    painter.drawLine(rightLineX, bottomY, rightLineX, topY);
-
-    QPen centerPen(Qt::yellow, 2, Qt::DashLine);
-    painter.setPen(centerPen);
-    painter.drawLine(centerLineX, bottomY, centerLineX, topY);
-
-    // Draw detailed polyline points if present
+    // Оставляем только отрисовку точек из LaneDetails (если они есть) для отладки
     auto drawBoundaryPoints = [&](const QVariantList& points, const QColor& color){
         const QVector<QPointF> pts = variantPointsToVec(points);
         if (pts.isEmpty())
             return;
 
-        QPen pen(color, 3, Qt::SolidLine);
+        // Рисуем только точки (без линий), чтобы не перекрывать FittedLines
+        QPen pen(color, 2, Qt::SolidLine);
         painter.setPen(pen);
+        painter.setBrush(QBrush(color));
 
         for (int i = 0; i < pts.size(); ++i) {
             QPointF p = worldToImage(pts[i].x(), pts[i].y(), imageSize);
-            painter.drawEllipse(p, 4, 4);
-            if (i > 0) {
-                QPointF prev = worldToImage(pts[i-1].x(), pts[i-1].y(), imageSize);
-                painter.drawLine(prev, p);
-            }
+            painter.drawEllipse(p, 3, 3);
         }
     };
 
-    drawBoundaryPoints(m_laneStateViewModel->leftPoints(), leftColor);
-    drawBoundaryPoints(m_laneStateViewModel->rightPoints(), rightColor);
+    const QColor leftColor = laneColorFromString(m_laneStateViewModel->laneColorLeft());
+    const QColor rightColor = laneColorFromString(m_laneStateViewModel->laneColorRight());
 
+    // Отрисовываем точки только если FittedLines пусты (fallback)
+    if (!m_fittedLinesModel.isValid() || m_fittedLinesModel.empty()) {
+        drawBoundaryPoints(m_laneStateViewModel->leftPoints(), leftColor);
+        drawBoundaryPoints(m_laneStateViewModel->rightPoints(), rightColor);
+    }
+
+    // Информационный текст в верхнем левом углу
     painter.setPen(Qt::white);
-    painter.setFont(QFont("Arial", 10));
+    painter.setFont(QFont("Arial", 10, QFont::Bold));
+
+    // Фон для текста
+    QRect textBg(5, 5, 250, 50);
+    painter.fillRect(textBg, QColor(0, 0, 0, 150));
+
     painter.drawText(10, 20, QString("Lane Width: %1m").arg(m_laneStateViewModel->laneWidthMeters(), 0, 'f', 2));
-    painter.drawText(10, 35, QString("Quality: %1% / %2%")
+    painter.drawText(10, 35, QString("Quality: L:%1% R:%2%")
                                   .arg(m_laneStateViewModel->laneQualityLeftPercent())
                                   .arg(m_laneStateViewModel->laneQualityRightPercent()));
+    painter.drawText(10, 50, QString("Lines: %1").arg(m_fittedLinesModel.size()));
 }
 
 void MarkingOverlayProcessor::drawMarkingObjects(QPainter& painter, const QSize& imageSize)
@@ -320,6 +325,9 @@ void MarkingOverlayProcessor::drawMarkingObjects(QPainter& painter, const QSize&
 
         const float x = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::XMetersRole).toFloat();
         const float y = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::YMetersRole).toFloat();
+        const float length = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::LengthMetersRole).toFloat();
+        const float width = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::WidthMetersRole).toFloat();
+        const float yaw = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::YawDegRole).toFloat();
         const QString className = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::ClassNameRole).toString();
         const bool isCrosswalk = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::IsCrosswalkRole).toBool();
         const bool isArrow = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::IsArrowRole).toBool();
@@ -327,19 +335,11 @@ void MarkingOverlayProcessor::drawMarkingObjects(QPainter& painter, const QSize&
         const QString lineColorStr = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::LineColorRole).toString();
         const QString lineStyleStr = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::LineStyleRole).toString();
 
-        QPointF pos = worldToImage(x, y, imageSize);
-
         QColor color = objectColorFromStrings(lineColorStr, lineStyleStr, isCrosswalk, isArrow);
-        const int radius = 8;
 
-        QPen pen(color, 2, penStyleFromString(lineStyleStr));
-        painter.setPen(pen);
-        painter.setBrush(QBrush(color, Qt::SolidPattern));
-        painter.drawEllipse(pos, radius, radius);
-
-        painter.setPen(Qt::white);
-        painter.setFont(QFont("Arial", 8));
-        painter.drawText(pos.x() + radius + 2, pos.y(), QString("%1 (%.0f%%)").arg(className).arg(confidence * 100));
+        // Draw object with contour and size information
+        drawMarkingObjectWithContour(painter, imageSize, x, y, length, width, yaw,
+                                     className, color, isCrosswalk, isArrow);
     }
 }
 
@@ -383,14 +383,257 @@ void MarkingOverlayProcessor::drawWarnings(QPainter& painter, const QSize& image
     }
 }
 
-QPointF MarkingOverlayProcessor::worldToImage(float x, float y, const QSize& imageSize) const
+QPointF MarkingOverlayProcessor::worldToImage(float worldX_m, float worldY_m, const QSize& imageSize) const
 {
-    const float pixelsPerMeter = imageSize.width() / 10.0f;
-    const int centerX = imageSize.width() / 2;
-    const int bottomY = imageSize.height();
+    // GeometryMapper already normalizes detections to decimeters in image space:
+    // x_dm = ((cx - w/2) / w) * 100, y_dm = ((h - cy) / h) * 100
+    // Parser converts decimeters to meters (value / 10), so here we invert that
+    // normalization back to pixel coordinates without any camera intrinsics.
 
-    const int imgX = centerX + static_cast<int>(y * pixelsPerMeter);
-    const int imgY = bottomY - static_cast<int>(x * pixelsPerMeter);
+    // Keep image dimensions for completeness (calibration setters remain no-ops for projection)
+    const_cast<CameraCalibration&>(m_calibration).imageWidth = imageSize.width();
+    const_cast<CameraCalibration&>(m_calibration).imageHeight = imageSize.height();
 
-    return QPointF(imgX, imgY);
+    const float w = static_cast<float>(imageSize.width());
+    const float h = static_cast<float>(imageSize.height());
+
+    // Inverse of GeometryMapper mapping:
+    // cx = w/2 + (x_m / 10) * w
+    // cy = h - (y_m / 10) * h
+    const float img_x = w * 0.5f + (worldX_m / 10.0f) * w;
+    const float img_y = h - (worldY_m / 10.0f) * h;
+
+    return QPointF(img_x, img_y);
+}
+
+QColor MarkingOverlayProcessor::getColorForLineColor(laneproto::LineColor color) const
+{
+    switch (color) {
+        case laneproto::LineColor::White:
+            return QColor(255, 255, 255);
+        case laneproto::LineColor::Yellow:
+            return QColor(255, 215, 0);
+        case laneproto::LineColor::Red:
+            return QColor(220, 20, 60);
+        case laneproto::LineColor::Unknown:
+        default:
+            return QColor(180, 180, 180);
+    }
+}
+
+QColor MarkingOverlayProcessor::getColorForClassId(laneproto::MarkingClassId classId, laneproto::LineColor lineColor) const
+{
+    // If line has specific color, use it
+    if (lineColor != laneproto::LineColor::Unknown) {
+        return getColorForLineColor(lineColor);
+    }
+
+    // Otherwise color by class type
+    switch (classId) {
+        case laneproto::MarkingClassId::Crosswalk:
+            return QColor(0, 255, 255);  // Cyan
+        case laneproto::MarkingClassId::StopLine:
+            return QColor(255, 0, 0);  // Red
+        case laneproto::MarkingClassId::BoxJunction:
+            return QColor(255, 255, 0);  // Yellow
+        case laneproto::MarkingClassId::ArrowLeft:
+        case laneproto::MarkingClassId::ArrowRight:
+        case laneproto::MarkingClassId::ArrowStraight:
+        case laneproto::MarkingClassId::ArrowLeftStraight:
+        case laneproto::MarkingClassId::ArrowRightStraight:
+            return QColor(255, 0, 255);  // Magenta
+        case laneproto::MarkingClassId::SolidSingleWhite:
+        case laneproto::MarkingClassId::DoubleWhite:
+        case laneproto::MarkingClassId::DashedWhite:
+            return QColor(255, 255, 255);  // White
+        case laneproto::MarkingClassId::SolidSingleYellow:
+        case laneproto::MarkingClassId::DoubleYellow:
+        case laneproto::MarkingClassId::DashedYellow:
+            return QColor(255, 215, 0);  // Yellow
+        case laneproto::MarkingClassId::SolidSingleRed:
+            return QColor(220, 20, 60);  // Red
+        case laneproto::MarkingClassId::MotorIcon:
+            return QColor(100, 149, 237);  // Cornflower blue
+        case laneproto::MarkingClassId::BikeIcon:
+            return QColor(50, 205, 50);  // Lime green
+        case laneproto::MarkingClassId::ChannelizingLine:
+            return QColor(255, 165, 0);  // Orange
+        case laneproto::MarkingClassId::Unknown:
+        default:
+            return QColor(77, 163, 255);  // Light blue
+    }
+}
+
+void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QSize& imageSize)
+{
+    if (!m_fittedLinesModel.isValid() || m_fittedLinesModel.empty())
+        return;
+
+    for (const auto& line : m_fittedLinesModel.lines()) {
+        if (!line.isValid() || !line.isConfident(50))
+            continue;
+
+        // Generate points along the polynomial curve
+        auto points = line.generatePoints(100);
+        if (points.empty())
+            continue;
+
+        // Points are already in pixel coordinates (x, y)
+        // Just need to convert to QPointF
+        QVector<QPointF> screenPoints;
+        screenPoints.reserve(points.size());
+
+        for (const auto& [x_px, y_px] : points) {
+            // FittedLines come in pixel coordinates - use directly
+            screenPoints.push_back(QPointF(x_px, y_px));
+        }
+
+        if (screenPoints.size() < 2)
+            continue;
+
+        // Determine color and style
+        QColor color = getColorForClassId(line.classId(), line.lineColor());
+
+        Qt::PenStyle penStyle = Qt::SolidLine;
+        int penWidth = 4;
+
+        switch (line.lineStyle()) {
+            case laneproto::LineStyle::Solid:
+                penStyle = Qt::SolidLine;
+                penWidth = 4;
+                break;
+            case laneproto::LineStyle::Dashed:
+                penStyle = Qt::DashLine;
+                penWidth = 4;
+                break;
+            case laneproto::LineStyle::Double:
+                penStyle = Qt::SolidLine;
+                penWidth = 8;
+                break;
+            case laneproto::LineStyle::Unknown:
+            default:
+                penStyle = Qt::SolidLine;
+                penWidth = 3;
+                break;
+        }
+
+        // First draw black outline for visibility
+        QPen outlinePen(Qt::black, penWidth + 2, penStyle);
+        outlinePen.setCapStyle(Qt::RoundCap);
+        outlinePen.setJoinStyle(Qt::RoundJoin);
+        painter.setPen(outlinePen);
+        painter.setOpacity(0.5);
+
+        for (int i = 1; i < screenPoints.size(); ++i) {
+            painter.drawLine(screenPoints[i-1], screenPoints[i]);
+        }
+
+        painter.setOpacity(1.0);
+
+        // Then draw the actual line on top
+        QPen pen(color, penWidth, penStyle);
+        pen.setCapStyle(Qt::RoundCap);
+        pen.setJoinStyle(Qt::RoundJoin);
+        painter.setPen(pen);
+
+        for (int i = 1; i < screenPoints.size(); ++i) {
+            painter.drawLine(screenPoints[i-1], screenPoints[i]);
+        }
+    }
+}
+
+void MarkingOverlayProcessor::drawMarkingObjectWithContour(QPainter& painter, const QSize& imageSize,
+                                                            float x, float y, float length, float width,
+                                                            float yaw, const QString& className,
+                                                            const QColor& color, bool isCrosswalk, bool isArrow)
+{
+    QPointF center = worldToImage(x, y, imageSize);
+
+    // GeometryMapper scales bbox height to image height and width to image width.
+    const float lengthPx = (length / 10.0f) * static_cast<float>(imageSize.height());
+    const float widthPx = (width / 10.0f) * static_cast<float>(imageSize.width());
+
+    painter.save();
+    painter.translate(center);
+    painter.rotate(-yaw);  // Negative because Qt rotates clockwise
+
+    QRectF rect(-widthPx / 2.0f, -lengthPx / 2.0f, widthPx, lengthPx);
+
+    // Специализированная отрисовка для разных типов
+    if (isCrosswalk) {
+        // Пешеходный переход - рисуем полоски
+        painter.setPen(QPen(color, 2, Qt::SolidLine));
+        QColor fillColor = color;
+        fillColor.setAlpha(100);
+        painter.setBrush(QBrush(fillColor));
+
+        // Рисуем зебру
+        int numStripes = 8;
+        float stripeWidth = widthPx / numStripes;
+        for (int i = 0; i < numStripes; i += 2) {
+            QRectF stripe(rect.left() + i * stripeWidth, rect.top(),
+                         stripeWidth, lengthPx);
+            painter.drawRect(stripe);
+        }
+
+        // Контур
+        painter.setBrush(Qt::NoBrush);
+        painter.setPen(QPen(color, 3, Qt::SolidLine));
+        painter.drawRect(rect);
+
+    } else if (isArrow) {
+        // Стрелка - рисуем упрощенную форму стрелки
+        painter.setPen(QPen(color, 3, Qt::SolidLine));
+        QColor fillColor = color;
+        fillColor.setAlpha(120);
+        painter.setBrush(QBrush(fillColor));
+
+        // Тело стрелки
+        float shaftWidth = widthPx * 0.4f;
+        float shaftLength = lengthPx * 0.6f;
+        QRectF shaft(-shaftWidth/2, -lengthPx/2, shaftWidth, shaftLength);
+        painter.drawRect(shaft);
+
+        // Голова стрелки (треугольник)
+        QPolygonF arrowHead;
+        float headY = -lengthPx/2 + shaftLength;
+        arrowHead << QPointF(0, lengthPx/2)  // Вершина
+                  << QPointF(-widthPx/2, headY)  // Левый угол
+                  << QPointF(widthPx/2, headY);  // Правый угол
+        painter.drawPolygon(arrowHead);
+
+    } else {
+        // Обычный объект - прямоугольник
+        painter.setPen(QPen(color, 2, Qt::SolidLine));
+        QColor fillColor = color;
+        fillColor.setAlpha(80);
+        painter.setBrush(QBrush(fillColor));
+        painter.drawRect(rect);
+
+        // Толстый контур
+        painter.setPen(QPen(color, 3, Qt::SolidLine));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawRect(rect);
+    }
+
+    painter.restore();
+
+    // Центральная точка
+    painter.setPen(QPen(Qt::white, 2));
+    painter.setBrush(QBrush(color));
+    painter.drawEllipse(center, 4, 4);
+
+    // Метка с названием
+    painter.setPen(Qt::white);
+    painter.setFont(QFont("Arial", 9, QFont::Bold));
+
+    // Фон для текста
+    QString label = className;
+    QFontMetrics fm(painter.font());
+    QRect textRect = fm.boundingRect(label);
+    textRect.moveCenter(QPoint(center.x() + textRect.width()/2 + 10, center.y() - 10));
+    textRect.adjust(-3, -1, 3, 1);
+
+    painter.fillRect(textRect, QColor(0, 0, 0, 180));
+    painter.drawText(textRect, Qt::AlignCenter, label);
 }

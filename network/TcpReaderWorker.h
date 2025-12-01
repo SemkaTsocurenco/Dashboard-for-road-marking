@@ -17,14 +17,15 @@ namespace network {
         void start(const QString& host, quint16 port);
         void stop();
 
-    signals: 
+    signals:
         void connected();
         void disconnected();
-        void errorOccurred(const QString& message);  
+        void errorOccurred(const QString& message);
         void laneSummaryParsed (const laneproto::LaneSummary& msg);
         void markingObjectsParsed(const laneproto::MarkingObjects& msg);
         void laneDetailsParsed(const laneproto::LaneDetails& msg);
         void markingObjectsExParsed(const laneproto::MarkingObjects& msg);
+        void fittedLinesParsed(const laneproto::FittedLines& msg);
         void parseErrorOccurred(const laneproto::ParseError& error);
     
     private slots: 
@@ -44,13 +45,14 @@ namespace network {
         // для переброса из парсера в воркер
         class MessageHandler : public laneproto::IMessageHandler{
         public:
-            explicit MessageHandler (TcpReaderWorker& owner) noexcept 
+            explicit MessageHandler (TcpReaderWorker& owner) noexcept
                 : owner_(owner){};
-            
+
             void onLaneSummary (const laneproto::LaneSummary& msg) override;
             void onMarkingObjects(const laneproto::MarkingObjects& msg) override;
             void onLaneDetails(const laneproto::LaneDetails& msg) override;
             void onMarkingObjectsEx(const laneproto::MarkingObjects& msg) override;
+            void onFittedLines(const laneproto::FittedLines& msg) override;
             void onParseError(const laneproto::ParseError& error) override;
         private:
             TcpReaderWorker& owner_;

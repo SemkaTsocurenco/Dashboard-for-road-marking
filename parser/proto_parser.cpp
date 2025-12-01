@@ -3,6 +3,7 @@
 #include "LoggerMacros.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -23,7 +24,14 @@ namespace {
         return static_cast<std::uint32_t>(p[0])
             | (static_cast<std::uint32_t>(p[1]) << 8)
             | (static_cast<std::uint32_t>(p[2]) << 16)
-            | (static_cast<std::uint32_t>(p[3]) << 24); 
+            | (static_cast<std::uint32_t>(p[3]) << 24);
+    }
+
+    inline float read_le_float32(const std::uint8_t* p){
+        std::uint32_t u32 = read_le_u32(p);
+        float f;
+        std::memcpy(&f, &u32, sizeof(float));
+        return f;
     }
 
     inline std::uint16_t crc16_ibm (const std::uint8_t* data, std::size_t len){
@@ -71,7 +79,8 @@ namespace laneproto {
         if (h.msg_type != MsgType::MarkingObjects &&
             h.msg_type != MsgType::LaneSummary &&
             h.msg_type != MsgType::LaneDetails &&
-            h.msg_type != MsgType::MarkingObjectsEx){
+            h.msg_type != MsgType::MarkingObjectsEx &&
+            h.msg_type != MsgType::FittedLines){
             ParseError err;
             err.code = ParseErrorCode::UnknownMsgType;
             err.message = "Unknown MSG_TYPE: " + std::to_string(
@@ -438,6 +447,79 @@ namespace laneproto {
 
         handler_.onLaneDetails(msg);
     }
+
+    void ProtoParser::handleFittedLines() {
+        if (payload_buf_.size() != current_header_.payload_len) {
+            ParseError err;
+            err.code = ParseErrorCode::FittedLinesFormat;
+            err.message = "Payload size mismatch for FittedLines";
+            handler_.onParseError(err);
+            return;
+        }
+        if (payload_buf_.empty()) {
+            ParseError err;
+            err.code = ParseErrorCode::FittedLinesFormat;
+            err.message = "Empty payload for FittedLines";
+            handler_.onParseError(err);
+            return;
+        }
+
+        std::uint8_t num_lines = payload_buf_[0];
+
+        const std::size_t line_size = 23;
+        std::size_t expected_len = 1u + static_cast<std::size_t>(num_lines) * line_size;
+        if (current_header_.payload_len != expected_len){
+            ParseError err;
+            err.code = ParseErrorCode::FittedLinesFormat;
+            err.message = "FittedLines LEN mismatch: expected "
+                + std::to_string(expected_len) + ", got "
+                + std::to_string(current_header_.payload_len);
+            handler_.onParseError(err);
+            return;
+        }
+
+        FittedLines msg;
+        msg.timestamp_ms = current_header_.timestamp_ms;
+        msg.seq = current_header_.seq;
+        msg.lines.clear();
+        msg.lines.reserve(num_lines);
+
+        std::size_t offset = 1;
+
+        for (std::uint8_t i = 0; i < num_lines; ++i){
+            if (offset + line_size > payload_buf_.size()){
+                ParseError err;
+                err.code = ParseErrorCode::FittedLinesFormat;
+                err.message = "Truncated FittedLine in payload";
+                handler_.onParseError(err);
+                return;
+            }
+
+            const std::uint8_t* p = payload_buf_.data() + offset;
+            FittedLine line;
+
+            line.class_id = static_cast<MarkingClassId>(p[0]);
+            line.side = static_cast<LineSide>(p[1]);
+            line.color = static_cast<LineColor>(p[2]);
+            line.style = static_cast<LineStyle>(p[3]);
+
+            line.poly_a = read_le_float32(p + 4);
+            line.poly_b = read_le_float32(p + 8);
+            line.poly_c = read_le_float32(p + 12);
+
+            line.y_start = read_le_i16(p + 16);
+            line.y_end = read_le_i16(p + 18);
+
+            line.confidence = p[20];
+            line.quality = p[21];
+
+            msg.lines.push_back(line);
+
+            offset += line_size;
+        }
+        handler_.onFittedLines(msg);
+    }
+
     void ProtoParser::feed(const std::vector<std::uint8_t>& data) {
         feed(data.data(), data.size());
     }
@@ -495,6 +577,9 @@ namespace laneproto {
                                 break;
                             case MsgType::MarkingObjectsEx:
                                 handleMarkingObjectsEx();
+                                break;
+                            case MsgType::FittedLines:
+                                handleFittedLines();
                                 break;
                         }
                         reset();

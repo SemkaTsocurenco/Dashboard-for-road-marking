@@ -19,6 +19,7 @@ namespace laneproto {
         MarkingObjects  = 0x02,
         LaneDetails     = 0x03,
         MarkingObjectsEx= 0x04,
+        FittedLines     = 0x05,
     };
 
     enum class LaneType : std::uint8_t {
@@ -31,9 +32,25 @@ namespace laneproto {
     };
 
     enum class MarkingClassId : std::uint8_t {
-        Unknown       = 0x00,
-        Arrow         = 0x01,
-        Crosswalk     = 0x02,
+        Unknown              = 0x00,
+        BoxJunction          = 0x01,
+        Crosswalk            = 0x02,
+        StopLine             = 0x03,
+        SolidSingleWhite     = 0x04,
+        SolidSingleYellow    = 0x05,
+        SolidSingleRed       = 0x06,
+        DoubleWhite          = 0x07,
+        DoubleYellow         = 0x08,
+        DashedWhite          = 0x09,
+        DashedYellow         = 0x0A,
+        ArrowLeft            = 0x0B,
+        ArrowStraight        = 0x0C,
+        ArrowRight           = 0x0D,
+        ArrowLeftStraight    = 0x0E,
+        ArrowRightStraight   = 0x0F,
+        ChannelizingLine     = 0x10,
+        MotorIcon            = 0x16,
+        BikeIcon             = 0x17,
     };
 
     enum class LineColor : std::uint8_t {
@@ -50,6 +67,13 @@ namespace laneproto {
         Double  = 0x03,
     };
 
+    enum class LineSide : std::uint8_t {
+        Unknown = 0x00,
+        Left    = 0x01,
+        Right   = 0x02,
+        Center  = 0x03,
+    };
+
     enum class ParseErrorCode {
         Unknown,
         BadVersion,
@@ -62,6 +86,7 @@ namespace laneproto {
         MarkingFormat,
         LaneDetailsFormat,
         MarkingExFormat,
+        FittedLinesFormat,
     };
 
     struct ParseError {
@@ -124,14 +149,35 @@ namespace laneproto {
         LaneBoundaryDetails right;
     };
 
+    struct FittedLine {
+        MarkingClassId class_id = MarkingClassId::Unknown;
+        LineSide side = LineSide::Unknown;
+        LineColor color = LineColor::Unknown;
+        LineStyle style = LineStyle::Unknown;
+        float poly_a = 0.0f;
+        float poly_b = 0.0f;
+        float poly_c = 0.0f;
+        std::int16_t y_start = 0;
+        std::int16_t y_end = 0;
+        std::uint8_t confidence = 0;
+        std::uint8_t quality = 0;
+    };
+
+    struct FittedLines {
+        TimestampMs timestamp_ms{};
+        SequenceNumber seq{};
+        std::vector<FittedLine> lines;
+    };
+
     class IMessageHandler {
-    public: 
+    public:
         virtual ~IMessageHandler() = default;
 
         virtual void onLaneSummary(const LaneSummary& msg) = 0;
         virtual void onMarkingObjects(const MarkingObjects& msg) = 0;
         virtual void onLaneDetails(const LaneDetails& msg) = 0;
         virtual void onMarkingObjectsEx(const MarkingObjects& msg) = 0;
+        virtual void onFittedLines(const FittedLines& msg) = 0;
         virtual void onParseError(const ParseError& error) = 0;
     };
 
@@ -188,6 +234,7 @@ namespace laneproto {
         void handleMarkingObjectsEx();
         void handleLaneSummary();
         void handleLaneDetails();
+        void handleFittedLines();
     };
 
 
