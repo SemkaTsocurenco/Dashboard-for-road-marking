@@ -267,16 +267,11 @@ void MarkingOverlayProcessor::drawLaneOverlay(QPainter& painter, const QSize& im
     if (!m_laneStateViewModel || !m_laneStateViewModel->isValid())
         return;
 
-    // ОТКЛЮЧАЕМ старую отрисовку простых линий - используем FittedLines вместо них!
-    // Старые линии из LaneSummary слишком упрощенные и перекрывают точные FittedLines
-
-    // Оставляем только отрисовку точек из LaneDetails (если они есть) для отладки
     auto drawBoundaryPoints = [&](const QVariantList& points, const QColor& color){
         const QVector<QPointF> pts = variantPointsToVec(points);
         if (pts.isEmpty())
             return;
 
-        // Рисуем только точки (без линий), чтобы не перекрывать FittedLines
         QPen pen(color, 2, Qt::SolidLine);
         painter.setPen(pen);
         painter.setBrush(QBrush(color));
@@ -290,7 +285,6 @@ void MarkingOverlayProcessor::drawLaneOverlay(QPainter& painter, const QSize& im
     const QColor leftColor = laneColorFromString(m_laneStateViewModel->laneColorLeft());
     const QColor rightColor = laneColorFromString(m_laneStateViewModel->laneColorRight());
 
-    // Отрисовываем точки только если FittedLines пусты (fallback)
     if (!m_fittedLinesModel.isValid() || m_fittedLinesModel.empty()) {
         drawBoundaryPoints(m_laneStateViewModel->leftPoints(), leftColor);
         drawBoundaryPoints(m_laneStateViewModel->rightPoints(), rightColor);
@@ -466,33 +460,61 @@ QColor MarkingOverlayProcessor::getColorForClassId(laneproto::MarkingClassId cla
 
 void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QSize& imageSize)
 {
-    if (!m_fittedLinesModel.isValid() || m_fittedLinesModel.empty())
+    if (!m_fittedLinesModel.isValid() || m_fittedLinesModel.empty()){
         return;
+    }
+
+    LOG_DEBUG << "Drawing " << m_fittedLinesModel.size() << " fitted lines on image size: "
+              << imageSize.width() << "x" << imageSize.height();
+
+    // Python sends coordinates for 640x480 image, scale to current size
+    const float scaleX = static_cast<float>(imageSize.width()) / 640.0f;
+    const float scaleY = static_cast<float>(imageSize.height()) / 480.0f;
+
+    LOG_DEBUG << "Scaling factors: scaleX=" << scaleX << ", scaleY=" << scaleY;
 
     for (const auto& line : m_fittedLinesModel.lines()) {
-        if (!line.isValid() || !line.isConfident(50))
-            continue;
 
-        // Generate points along the polynomial curve
+        if (!line.isValid() || !line.isConfident(50)) {
+            LOG_DEBUG << "Skipping invalid or low confidence line";
+            continue;
+        }
+
+        LOG_DEBUG << "Line: y_range=[" << line.yStart() << "," << line.yEnd()
+                  << "], poly=[" << line.polyA() << "," << line.polyB() << "," << line.polyC() << "]";
+
         auto points = line.generatePoints(100);
-        if (points.empty())
+        if (points.empty()) {
+            LOG_WARN << "generatePoints returned empty vector";
             continue;
+        }
 
-        // Points are already in pixel coordinates (x, y)
-        // Just need to convert to QPointF
+        LOG_DEBUG << "Generated " << points.size() << " points";
+
         QVector<QPointF> screenPoints;
         screenPoints.reserve(points.size());
 
         for (const auto& [x_px, y_px] : points) {
-            // FittedLines come in pixel coordinates - use directly
-            screenPoints.push_back(QPointF(x_px, y_px));
+            // Scale from 640x480 to actual image size
+            float scaled_x = x_px * scaleX;
+            float scaled_y = y_px * scaleY;
+            screenPoints.push_back(QPointF(scaled_x, scaled_y));
         }
 
-        if (screenPoints.size() < 2)
+        if (screenPoints.size() < 2) {
+            LOG_WARN << "Not enough screen points: " << screenPoints.size();
             continue;
+        }
 
-        // Determine color and style
+        LOG_DEBUG << "First point (scaled): (" << screenPoints[0].x() << "," << screenPoints[0].y() << ")";
+        LOG_DEBUG << "Last point (scaled): (" << screenPoints.last().x() << "," << screenPoints.last().y() << ")";
+
         QColor color = getColorForClassId(line.classId(), line.lineColor());
+
+        LOG_DEBUG << "Drawing line with color: " << color.name().toStdString()
+                  << ", classId=" << static_cast<int>(line.classId())
+                  << ", lineColor=" << static_cast<int>(line.lineColor())
+                  << ", lineStyle=" << static_cast<int>(line.lineStyle());
 
         Qt::PenStyle penStyle = Qt::SolidLine;
         int penWidth = 4;
@@ -517,6 +539,8 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
                 break;
         }
 
+        LOG_DEBUG << "Using penWidth=" << penWidth << ", penStyle=" << static_cast<int>(penStyle);
+
         // First draw black outline for visibility
         QPen outlinePen(Qt::black, penWidth + 2, penStyle);
         outlinePen.setCapStyle(Qt::RoundCap);
@@ -539,6 +563,8 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
         for (int i = 1; i < screenPoints.size(); ++i) {
             painter.drawLine(screenPoints[i-1], screenPoints[i]);
         }
+
+        LOG_DEBUG << "Line drawing completed successfully";
     }
 }
 

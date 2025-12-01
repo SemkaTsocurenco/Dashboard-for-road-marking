@@ -7,12 +7,7 @@ Item {
     height: 600
 
     Component.onCompleted: {
-        console.log("Dashboard.qml loaded, size:", width, "x", height)
-        console.log("=== CAMERA CONTROLS ===")
-        console.log("WASD - Move camera (forward/back/left/right)")
-        console.log("Space/Shift - Move camera up/down")
-        console.log("Arrow keys - Rotate camera")
-        console.log("R - Reset camera to default position")
+
         cameraController.focus = true
     }
 

@@ -85,12 +85,8 @@ namespace domain {
     void LaneState::updateFromProto(const laneproto::LaneDetails& msg) noexcept {
         timestamp_ms_ = msg.timestamp_ms;
         seq_ = msg.seq;
-        left_offset_m_ = msg.left_offset_m;
-        right_offset_m_ = msg.right_offset_m;
         lane_type_left_ = msg.left.type;
         lane_type_right_ = msg.right.type;
-        allowed_maneuvers_raw_ = msg.allowed_maneuvers;
-        quality_raw_ = msg.quality;
         valid_ = true;
 
         lane_color_left_ = msg.left.color;

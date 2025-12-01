@@ -9,14 +9,6 @@ Node {
     property real cameraHeight: 250
     property real cameraDistance: -25
     Component.onCompleted: {
-        console.log("CarScene loaded")
-        console.log("Camera position:", camera.position)
-        console.log("Camera rotation:", camera.eulerRotation)
-        console.log("markingModel defined:", typeof markingModel !== 'undefined')
-        console.log("markingModel:", markingModel)
-        if (typeof markingModel !== 'undefined' && markingModel) {
-            console.log("Marking model count:", markingModel.count)
-        }
     }
 
     PerspectiveCamera {
@@ -75,7 +67,6 @@ Node {
         model: markingModel
 
         onModelChanged: {
-            console.log("Repeater3D model changed, count:", model ? model.count : 0)
         }
 
         delegate: MarkingLine {}

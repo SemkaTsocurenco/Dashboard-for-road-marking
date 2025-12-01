@@ -12,8 +12,8 @@ namespace domain {
         float lane_departure_offset_threshold_m = 0.3f;
         float crosswalk_distance_threshold_m = 30.0f;
         float crosswalk_critical_distance_m = 10.0f;
-        std::uint8_t min_marking_confidence = 50;
-        std::uint8_t min_lane_quality = 60;
+        std::uint8_t min_marking_confidence = 10;
+        std::uint8_t min_lane_quality = 10;
         bool enable_crosswalk_warnings = true;
         bool enable_lane_departure_warnings = true;
     };

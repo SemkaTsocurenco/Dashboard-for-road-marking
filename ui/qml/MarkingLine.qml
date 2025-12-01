@@ -18,9 +18,6 @@ Model {
     required property string lineStyle
 
     Component.onCompleted: {
-        console.log("MarkingLine created: x=", xMeters, "y=", yMeters, "length=", lengthMeters,
-                    "width=", widthMeters, "valid=", isValid, "color=", lineColor,
-                    "position:", position, "scale:", scale, "visible:", visible)
     }
 
     source: "#Cube"

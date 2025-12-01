@@ -323,10 +323,14 @@ namespace laneproto {
     }
 
     void ProtoParser::handleLaneDetails (){
-        constexpr std::size_t kFixedPart = 18; // offsets, flags, types, colors, widths, qualities, point counts
+        // Current NN sender packs LaneDetails as:
+        // left_type, right_type, left_color, right_color,
+        // left_quality, right_quality, left_width_dm, right_width_dm,
+        // then 3 points per side (x_dm, y_dm) each int16.
+        constexpr std::size_t kFixedPart = 10; // types, colors, qualities, widths
         constexpr std::size_t kPointsPerSide = 3;
         constexpr std::size_t kPointSizeBytes = 4; // int16 x + int16 y
-        constexpr std::size_t kExpectedMin = kFixedPart + 2 * kPointsPerSide * kPointSizeBytes; // 42 bytes
+        constexpr std::size_t kExpectedMin = kFixedPart + 2 * kPointsPerSide * kPointSizeBytes; // 34 bytes
 
         if (payload_buf_.size() < kExpectedMin) {
             ParseError err;
@@ -350,42 +354,29 @@ namespace laneproto {
         LaneDetails msg;
         msg.timestamp_ms = current_header_.timestamp_ms;
         msg.seq = current_header_.seq;
+        msg.left_offset_m = 0.0f;
+        msg.right_offset_m = 0.0f;
+        msg.allowed_maneuvers = 0;
+        msg.quality = 0;
 
         std::size_t offset = 0;
-
-        auto read_i16_and_advance = [&](float& out){
-            if (offset + 2 > payload_buf_.size())
-                return false;
-            out = static_cast<float>(read_le_i16(payload_buf_.data() + offset)) / 10.0f;
-            offset += 2;
-            return true;
-        };
-
-        if (!read_i16_and_advance(msg.left_offset_m) ||
-            !read_i16_and_advance(msg.right_offset_m)) {
-            ParseError err;
-            err.code = ParseErrorCode::LaneDetailsFormat;
-            err.message = "Truncated offsets in LaneDetails";
-            handler_.onParseError(err);
-            return;
-        }
-
-        if (offset + 10 > payload_buf_.size()) { // allowed, quality, lane types, colors, widths, qualities
-            ParseError err;
-            err.code = ParseErrorCode::LaneDetailsFormat;
-            err.message = "Truncated main fields in LaneDetails";
-            handler_.onParseError(err);
-            return;
-        }
-
-        msg.allowed_maneuvers = payload_buf_[offset++];
-        msg.quality = payload_buf_[offset++];
 
         msg.left.type = static_cast<LaneType>(payload_buf_[offset++]);
         msg.right.type = static_cast<LaneType>(payload_buf_[offset++]);
 
         msg.left.color = static_cast<LineColor>(payload_buf_[offset++]);
         msg.right.color = static_cast<LineColor>(payload_buf_[offset++]);
+
+        if (offset + 2 > payload_buf_.size()) {
+            ParseError err;
+            err.code = ParseErrorCode::LaneDetailsFormat;
+            err.message = "Truncated quality fields in LaneDetails";
+            handler_.onParseError(err);
+            return;
+        }
+
+        msg.left.quality = payload_buf_[offset++];
+        msg.right.quality = payload_buf_[offset++];
 
         if (offset + 4 > payload_buf_.size()) {
             ParseError err;
@@ -403,19 +394,8 @@ namespace laneproto {
         msg.left.width_m = static_cast<float>(left_width_decim) / 10.0f;
         msg.right.width_m = static_cast<float>(right_width_decim) / 10.0f;
 
-        if (offset + 4 > payload_buf_.size()) {
-            ParseError err;
-            err.code = ParseErrorCode::LaneDetailsFormat;
-            err.message = "Truncated quality/point-count fields in LaneDetails";
-            handler_.onParseError(err);
-            return;
-        }
-
-        msg.left.quality = payload_buf_[offset++];
-        msg.right.quality = payload_buf_[offset++];
-
-        msg.left.points_count = std::min<std::uint8_t>(payload_buf_[offset++], kPointsPerSide);
-        msg.right.points_count = std::min<std::uint8_t>(payload_buf_[offset++], kPointsPerSide);
+        msg.left.points_count = kPointsPerSide;
+        msg.right.points_count = kPointsPerSide;
 
         auto read_points = [&](LaneBoundaryDetails& boundary, const char* side)->bool {
             for (std::size_t i = 0; i < kPointsPerSide; ++i) {
@@ -466,7 +446,7 @@ namespace laneproto {
 
         std::uint8_t num_lines = payload_buf_[0];
 
-        const std::size_t line_size = 23;
+        const std::size_t line_size = 22; // matches NN sender packing "<BBBBfffhhBB"
         std::size_t expected_len = 1u + static_cast<std::size_t>(num_lines) * line_size;
         if (current_header_.payload_len != expected_len){
             ParseError err;

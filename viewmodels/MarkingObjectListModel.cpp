@@ -1,4 +1,5 @@
 #include "MarkingObjectListModel.h"
+#include "LoggerMacros.hpp"
 #include <cmath>
 
 namespace viewmodels {
@@ -15,7 +16,7 @@ namespace viewmodels {
         objects_.reserve(model.size());
 
         for (const auto& obj : model) {
-            qDebug() << "MarkingObject from domain: x=" << obj.xMeters()
+            LOG_DEBUG << "MarkingObject from domain: x=" << obj.xMeters()
                      << "y=" << obj.yMeters()
                      << "length=" << obj.lengthMeters()
                      << "width=" << obj.widthMeters()

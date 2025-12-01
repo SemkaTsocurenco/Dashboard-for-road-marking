@@ -128,12 +128,8 @@ Item {
                 camera.position = Qt.vector3d(0, 15, -25);
                 camera.eulerRotation = Qt.vector3d(-35, 0, 0);
                 event.accepted = true;
-                console.log("Camera reset to default position");
                 break;
         }
 
-        if (event.accepted) {
-            console.log(positionText + " | " + rotationText);
-        }
     }
 }
