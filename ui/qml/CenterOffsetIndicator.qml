@@ -7,22 +7,22 @@ Item {
     anchors.bottom: parent.bottom
     anchors.margins: 20
 
-    width: 320
-    height: 130
+    width: sceneConfig.centerOffsetWidth
+    height: sceneConfig.centerOffsetHeight
 
     // Binding to laneViewModel; fall back to zero if not available
     property bool hasData: laneViewModel && laneViewModel.valid
     property real offsetMeters: hasData ? laneViewModel.centerOffsetMeters : 0.0
-    property real clampedOffset: Math.max(-1.0, Math.min(1.0, offsetMeters))
-    property real normalizedOffset: (clampedOffset + 1.0) / 2.0  // 0..1 across the bar
+    property real clampedOffset: Math.max(-sceneConfig.maxOffsetM, Math.min(sceneConfig.maxOffsetM, offsetMeters))
+    property real normalizedOffset: (clampedOffset + sceneConfig.normalizationDivisor) / sceneConfig.normalizationMultiplier  // 0..1 across the bar
 
     property color markerColor: {
         var distance = Math.abs(clampedOffset)
         if (!hasData) {
             return "#7f8c8d"
-        } else if (distance < 0.3) {
+        } else if (distance < sceneConfig.safeThresholdM) {
             return "#2ecc71"
-        } else if (distance < 0.6) {
+        } else if (distance < sceneConfig.criticalThresholdM) {
             return "#f39c12"
         } else {
             return "#e74c3c"

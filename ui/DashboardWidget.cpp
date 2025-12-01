@@ -7,6 +7,8 @@
 #include <QSurfaceFormat>
 #include "AppController.hpp"
 #include "LoggerMacros.hpp"
+#include "SceneConfigViewModel.hpp"
+#include "SceneConfig.hpp"
 
 namespace ui {
 
@@ -29,9 +31,8 @@ DashboardWidget::DashboardWidget(QWidget* parent)
 
     quickWidget_->setResizeMode(QQuickWidget::SizeRootObjectToView);
     quickWidget_->setClearColor(QColor("#1a1a1a"));
-    quickWidget_->setMinimumSize(400, 300);
 
-    setMinimumSize(400, 300);
+    // Note: UI config will be set when controller is assigned
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     layout->addWidget(quickWidget_);
 
@@ -54,11 +55,20 @@ void DashboardWidget::setAppController(app::AppController* controller) {
 
     controller_ = controller;
 
+    // Apply UI config dimensions
+    const auto& ui_config = controller_->config().ui;
+    quickWidget_->setMinimumSize(ui_config.dashboard_widget_min_width, ui_config.dashboard_widget_min_height);
+    setMinimumSize(ui_config.dashboard_widget_min_width, ui_config.dashboard_widget_min_height);
+
     auto* context = quickWidget_->rootContext();
     context->setContextProperty("appController", controller);
     context->setContextProperty("laneViewModel", controller->laneViewModel());
     context->setContextProperty("markingModel", controller->markingListModel());
     context->setContextProperty("warningModel", controller->warningListModel());
+
+    // Create and register SceneConfigViewModel with default config
+    auto* sceneConfigViewModel = new viewmodels::SceneConfigViewModel(config::SceneConfig(), this);
+    context->setContextProperty("sceneConfig", sceneConfigViewModel);
 
     // Ensure standard import path is present (helps when system Qt is in a non-default location)
     const QString qmlPath = QLibraryInfo::path(QLibraryInfo::QmlImportsPath);

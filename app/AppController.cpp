@@ -60,7 +60,7 @@ bool AppController::initialize(const QString& config_path,
             if (override_port > 0)
                 video_url.setPort(override_port);
             else if (video_url.port() <= 0)
-                video_url.setPort(5000);
+                video_url.setPort(config::NetworkConfig::DEFAULT_VIDEO_PORT);
 
             config_.video.source_url = video_url.toString();
             LOG_INFO << "RTSP video URL updated to " << config_.video.source_url.toStdString();
@@ -136,8 +136,8 @@ void AppController::createComponents()
     overlay_processor_ = video::FrameProcessorPtr(new video::MarkingOverlayProcessor());
     LOG_DEBUG << "MarkingOverlayProcessor created";
 
-    sync_monitor_ = new SynchronizationMonitor(500, this);
-    LOG_DEBUG << "SynchronizationMonitor created";
+    // Note: sync_monitor_ will be created in configureComponents with actual config value
+    LOG_DEBUG << "Components creation complete (sync_monitor_ will be configured later)";
 }
 
 
@@ -170,11 +170,12 @@ void AppController::configureComponents()
     }
     LOG_DEBUG << "MarkingOverlayProcessor added to VideoWidget";
 
+    // Create sync monitor with config value
     if (sync_monitor_) {
         delete sync_monitor_;
     }
     sync_monitor_ = new SynchronizationMonitor(config_.sync.max_timestamp_diff_ms, this);
-    LOG_DEBUG << "SyncMonitor configured with threshold=" << config_.sync.max_timestamp_diff_ms << "ms";
+    LOG_DEBUG << "SyncMonitor created and configured with threshold=" << config_.sync.max_timestamp_diff_ms << "ms";
 }
 
 

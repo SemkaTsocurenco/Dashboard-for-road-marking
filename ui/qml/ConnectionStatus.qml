@@ -43,7 +43,7 @@ Item {
                 border.width: 1
 
                 Behavior on color {
-                    ColorAnimation { duration: 150 }
+                    ColorAnimation { duration: sceneConfig.colorAnimationDuration }
                 }
             }
 
@@ -53,7 +53,7 @@ Item {
                 font.pixelSize: 14
                 font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
-                opacity: connected ? 1.0 : 0.7
+                opacity: connected ? sceneConfig.connectedOpacity : sceneConfig.disconnectedOpacity
             }
         }
     }

@@ -1,4 +1,5 @@
 #include "LaneStateViewModel.h"
+#include "AppConfig.hpp"
 #include <algorithm>
 
 namespace viewmodels {
@@ -61,7 +62,8 @@ namespace viewmodels {
         }
 
         // Update quality (convert 0-255 to 0-100 percent)
-        int new_quality = static_cast<int>((state.qualityRaw() * 100) / 255);
+        int new_quality = static_cast<int>((state.qualityRaw() * config::ProtocolConfig::QUALITY_PERCENTAGE_MAX) /
+                                           config::ProtocolConfig::QUALITY_RAW_MAX);
         bool new_quality_good = state.isQualityGood(60); // 60 is default threshold
 
         if (quality_percent_ != new_quality || is_quality_good_ != new_quality_good) {
@@ -107,13 +109,15 @@ namespace viewmodels {
             emit laneWidthRightChanged(lane_width_right_m_);
         }
 
-        int new_quality_left = static_cast<int>((state.laneQualityLeftRaw() * 100) / 255);
+        int new_quality_left = static_cast<int>((state.laneQualityLeftRaw() * config::ProtocolConfig::QUALITY_PERCENTAGE_MAX) /
+                                                config::ProtocolConfig::QUALITY_RAW_MAX);
         if (lane_quality_left_percent_ != new_quality_left) {
             lane_quality_left_percent_ = new_quality_left;
             emit laneQualityLeftChanged(lane_quality_left_percent_);
         }
 
-        int new_quality_right = static_cast<int>((state.laneQualityRightRaw() * 100) / 255);
+        int new_quality_right = static_cast<int>((state.laneQualityRightRaw() * config::ProtocolConfig::QUALITY_PERCENTAGE_MAX) /
+                                                 config::ProtocolConfig::QUALITY_RAW_MAX);
         if (lane_quality_right_percent_ != new_quality_right) {
             lane_quality_right_percent_ = new_quality_right;
             emit laneQualityRightChanged(lane_quality_right_percent_);

@@ -1,5 +1,6 @@
 #include "QtMultimediaVideoProvider.hpp"
 #include "LoggerMacros.hpp"
+#include "AppConfig.hpp"
 
 #include <QUrl>
 #include <QDateTime>
@@ -23,7 +24,8 @@ QtMultimediaVideoProvider::QtMultimediaVideoProvider(QObject* parent)
 {
     ensureGStreamerInitialized();
 
-    m_busTimer.setInterval(250);
+    // Use config constant for bus poll interval
+    m_busTimer.setInterval(config::VideoProcessingConfig{}.gst_bus_poll_interval_ms);
     connect(&m_busTimer, &QTimer::timeout, this, &QtMultimediaVideoProvider::pollBusMessages);
 
     LOG_TRACE << "QtMultimediaVideoProvider created (GStreamer backend)";
@@ -87,7 +89,8 @@ void QtMultimediaVideoProvider::start()
     }
 
     GstState current = GST_STATE_NULL;
-    ret = gst_element_get_state(m_pipeline, &current, nullptr, 2 * GST_SECOND);
+    const auto timeout_multiplier = config::VideoProcessingConfig{}.gst_state_change_timeout_multiplier;
+    ret = gst_element_get_state(m_pipeline, &current, nullptr, timeout_multiplier * GST_SECOND);
     if (ret == GST_STATE_CHANGE_FAILURE || current == GST_STATE_NULL) {
         QString msg = QStringLiteral("Pipeline did not transition to PLAYING");
         emit errorOccurred(msg);
@@ -179,18 +182,20 @@ QString QtMultimediaVideoProvider::buildPipelineDescription(QString& error) cons
 
     if (url.scheme() == "udp" || url.scheme() == "rtp") {
         const QString host = url.host().isEmpty() ? QStringLiteral("239.0.0.1") : url.host();
-        const int port = url.port(5000);
+        const int port = url.port(config::NetworkConfig::DEFAULT_VIDEO_PORT);
         const QString caps = QStringLiteral("application/x-rtp, media=video, encoding-name=H264, payload=96");
+        const int latency = config::VideoProcessingConfig{}.rtp_jitter_buffer_latency_ms;
 
         return QStringLiteral(
                    "udpsrc address=%1 port=%2 auto-multicast=true caps=\"%3\" ! "
-                   "rtpjitterbuffer drop-on-latency=true latency=50 ! "
+                   "rtpjitterbuffer drop-on-latency=true latency=%4 ! "
                    "rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! "
                    "video/x-raw,format=RGBA ! "
                    "appsink name=appsink emit-signals=true sync=false max-buffers=1 drop=true")
             .arg(host)
             .arg(port)
-            .arg(caps);
+            .arg(caps)
+            .arg(latency);
     }
 
     if (url.isLocalFile() || url.scheme().isEmpty()) {
@@ -432,8 +437,9 @@ void QtMultimediaVideoProvider::handleSample(GstSample* sample)
 void QtMultimediaVideoProvider::updateFps()
 {
     const qint64 elapsed = m_fpsTimer.elapsed();
+    const int fps_interval = config::VideoProcessingConfig{}.fps_calculation_interval_ms;
 
-    if (elapsed >= 1000) {
+    if (elapsed >= fps_interval) {
         m_currentFps = (m_framesInSecond * 1000.0) / elapsed;
         LOG_DEBUG << "Current FPS:" << m_currentFps;
         m_framesInSecond = 0;

@@ -3,8 +3,8 @@ import QtQuick3D
 
 Item {
     id: root
-    width: 800
-    height: 600
+    width: sceneConfig.dashboardWidth
+    height: sceneConfig.dashboardHeight
 
     Component.onCompleted: {
 
@@ -46,8 +46,8 @@ Item {
             anchors.top: parent.top
             anchors.right: parent.right
             anchors.margins: 10
-            width: 350
-            height: 80
+            width: sceneConfig.cameraInfoWidth
+            height: sceneConfig.cameraInfoHeight
             color: "#80000000"
             radius: 5
 

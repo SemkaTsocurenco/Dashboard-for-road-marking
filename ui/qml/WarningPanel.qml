@@ -9,7 +9,7 @@ Item {
 
     Component.onCompleted: console.log("WarningPanel loaded, model activeCount=" + (warningModel ? warningModel.activeCount : "n/a"))
 
-    width: 360
+    width: sceneConfig.warningPanelWidth
     height: container.height
 
     function severityColor(sev) {
@@ -99,7 +99,7 @@ Item {
                             anchors.fill: parent
                             radius: 10
                             color: severityColor(model.severity)
-                            opacity: 0.92
+                            opacity: sceneConfig.overlayOpacity
 
                             border.color: "#0d0d0d"
                             border.width: 1

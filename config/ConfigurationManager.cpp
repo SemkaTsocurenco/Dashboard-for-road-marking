@@ -111,18 +111,22 @@ bool ConfigurationManager::validateNetworkConfig(const NetworkConfig& cfg, QStri
         return false;
     }
 
-    if (cfg.port == 0) {
-        error = "Network port must be between 1 and 65535";
+    if (cfg.port == 0 || cfg.port > NetworkConfig::MAX_PORT) {
+        error = QString("Network port must be between 1 and %1").arg(NetworkConfig::MAX_PORT);
         return false;
     }
 
-    if (cfg.reconnect_interval_ms < 100 || cfg.reconnect_interval_ms > 60000) {
-        error = "Reconnect interval must be between 100ms and 60000ms";
+    if (cfg.reconnect_interval_ms < NetworkConfig::MIN_RECONNECT_INTERVAL_MS ||
+        cfg.reconnect_interval_ms > NetworkConfig::MAX_RECONNECT_INTERVAL_MS) {
+        error = QString("Reconnect interval must be between %1ms and %2ms")
+                    .arg(NetworkConfig::MIN_RECONNECT_INTERVAL_MS)
+                    .arg(NetworkConfig::MAX_RECONNECT_INTERVAL_MS);
         return false;
     }
 
-    if (cfg.max_reconnect_attempts < 0 || cfg.max_reconnect_attempts > 1000) {
-        error = "Max reconnect attempts must be between 0 (unlimited) and 1000";
+    if (cfg.max_reconnect_attempts < 0 || cfg.max_reconnect_attempts > NetworkConfig::MAX_RECONNECT_ATTEMPTS_LIMIT) {
+        error = QString("Max reconnect attempts must be between 0 (unlimited) and %1")
+                    .arg(NetworkConfig::MAX_RECONNECT_ATTEMPTS_LIMIT);
         return false;
     }
 
@@ -165,13 +169,13 @@ bool ConfigurationManager::validateWarningConfig(const WarningConfig& cfg, QStri
         return false;
     }
 
-    if (cfg.min_marking_confidence > 100) {
-        error = "Min marking confidence must be between 0 and 100";
+    if (cfg.min_marking_confidence > ProtocolConfig::CONFIDENCE_SCALE) {
+        error = QString("Min marking confidence must be between 0 and %1").arg(ProtocolConfig::CONFIDENCE_SCALE);
         return false;
     }
 
-    if (cfg.min_lane_quality > 100) {
-        error = "Min lane quality must be between 0 and 100";
+    if (cfg.min_lane_quality > ProtocolConfig::QUALITY_PERCENTAGE_MAX) {
+        error = QString("Min lane quality must be between 0 and %1").arg(ProtocolConfig::QUALITY_PERCENTAGE_MAX);
         return false;
     }
 
@@ -179,8 +183,9 @@ bool ConfigurationManager::validateWarningConfig(const WarningConfig& cfg, QStri
 }
 
 bool ConfigurationManager::validateSyncConfig(const SyncConfig& cfg, QString& error) {
-    if (cfg.max_timestamp_diff_ms < 0 || cfg.max_timestamp_diff_ms > 10000) {
-        error = "Max timestamp diff must be between 0 and 10000ms";
+    if (cfg.max_timestamp_diff_ms < 0 || cfg.max_timestamp_diff_ms > SyncConfig::MAX_TIMESTAMP_DIFF_LIMIT_MS) {
+        error = QString("Max timestamp diff must be between 0 and %1ms")
+                    .arg(SyncConfig::MAX_TIMESTAMP_DIFF_LIMIT_MS);
         return false;
     }
 

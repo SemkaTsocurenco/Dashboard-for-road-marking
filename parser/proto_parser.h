@@ -5,14 +5,15 @@
 #include <string>
 #include <array>
 #include "../logger/Logger.hpp"
+#include "AppConfig.hpp"
 
 namespace laneproto {
     using TimestampMs = std::uint32_t;
     using SequenceNumber = std::uint8_t;
 
-    constexpr std::uint8_t kProtocolVersion = 0x01;
-    constexpr std::uint8_t kSyncByte = 0xAA;
-    constexpr std::size_t kMaxPayloadLength = 1024;
+    constexpr std::uint8_t kProtocolVersion = config::ProtocolConfig::PROTOCOL_VERSION;
+    constexpr std::uint8_t kSyncByte = config::ProtocolConfig::SYNC_BYTE;
+    constexpr std::size_t kMaxPayloadLength = config::ProtocolConfig::MAX_PAYLOAD_LENGTH;
 
     enum class MsgType : std::uint8_t {
         LaneSummary     = 0x01,
@@ -215,7 +216,7 @@ namespace laneproto {
 
         State state_{State::WaitingSync};
 
-        static constexpr std::size_t kHeaderSize = 1 + 1 + 1 + 4 + 2;
+        static constexpr std::size_t kHeaderSize = config::ProtocolConfig::HEADER_SIZE;
 
         std::uint8_t header_buf_[kHeaderSize]{};
         std::size_t  header_pos_ = 0;

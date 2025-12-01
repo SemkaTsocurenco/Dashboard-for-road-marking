@@ -1,5 +1,6 @@
 #include "MainWindow.hpp"
 #include "LoggerMacros.hpp"
+#include "AppConfig.hpp"
 #include <QMessageBox>
 #include <QMenu>
 #include <QAction>
@@ -27,7 +28,8 @@ void MainWindow::closeEvent(QCloseEvent* event)
 void MainWindow::setupUi()
 {
     setWindowTitle("Dashboard - Road Marking Detector");
-    resize(1280, 720);
+    const auto& ui_config = controller_->config().ui;
+    resize(ui_config.main_window_width, ui_config.main_window_height);
 
     central_widget_ = new QWidget(this);
     setCentralWidget(central_widget_);
@@ -59,9 +61,11 @@ void MainWindow::setupControlPanel()
     control_panel_ = new QGroupBox("Connection Control", this);
     auto* layout = new QHBoxLayout(control_panel_);
 
+    const auto& ui_config = controller_->config().ui;
+
     layout->addWidget(new QLabel("Host:", control_panel_));
     host_input_ = new QLineEdit(controller_->config().network.host, control_panel_);
-    host_input_->setMaximumWidth(150);
+    host_input_->setMaximumWidth(ui_config.host_input_max_width);
     layout->addWidget(host_input_);
 
     layout->addWidget(new QLabel("Port:", control_panel_));
@@ -88,10 +92,12 @@ void MainWindow::setupContentPanel()
     content_splitter_ = new QSplitter(Qt::Horizontal, this);
     content_splitter_->setChildrenCollapsible(false);
 
+    const auto& ui_config = controller_->config().ui;
+
     auto* video_widget = controller_->videoWidget();
     if (video_widget) {
         video_widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        video_widget->setMinimumSize(400, 300);
+        video_widget->setMinimumSize(ui_config.video_widget_min_width, ui_config.video_widget_min_height);
         content_splitter_->addWidget(video_widget);
     }
 
@@ -102,9 +108,9 @@ void MainWindow::setupContentPanel()
     content_splitter_->setStretchFactor(0, 1);
     content_splitter_->setStretchFactor(1, 1);
     // Force initial 50/50 split once layout is calculated
-    QTimer::singleShot(0, this, [this]() {
+    QTimer::singleShot(0, this, [this, ui_config]() {
         if (content_splitter_) {
-            const int half = qMax(400, this->width() / 2);
+            const int half = qMax(ui_config.min_content_width, this->width() / 2);
             content_splitter_->setSizes({half, half});
         }
     });
@@ -156,8 +162,9 @@ void MainWindow::onConnectButtonClicked()
     bool ok;
     int port = port_input_->text().toInt(&ok);
 
-    if (!ok || port <= 0 || port > 65535) {
-        QMessageBox::warning(this, "Invalid Port", "Please enter a valid port number (1-65535)");
+    if (!ok || port <= 0 || port > config::NetworkConfig::MAX_PORT) {
+        QMessageBox::warning(this, "Invalid Port",
+            QString("Please enter a valid port number (1-%1)").arg(config::NetworkConfig::MAX_PORT));
         return;
     }
 

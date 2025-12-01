@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <iosfwd>
+#include "AppConfig.hpp"
 
 namespace domain {
 
@@ -37,7 +38,7 @@ namespace domain {
         ~Warning() noexcept = default;
 
         Warning(WarningType type, WarningSeverity severity, std::uint64_t timestamp_ms,
-                float distance_m = 0.0f, std::uint8_t confidence = 100);
+                float distance_m = 0.0f, std::uint8_t confidence = config::ProtocolConfig::CONFIDENCE_SCALE);
 
         WarningType type() const noexcept;
         WarningSeverity severity() const noexcept;
@@ -57,7 +58,7 @@ namespace domain {
         void setActive(bool active) noexcept;
 
         bool isCritical() const noexcept;
-        bool isConfident(std::uint8_t threshold = 50) const noexcept;
+        bool isConfident(std::uint8_t threshold = config::ProtocolConfig::CONFIDENCE_SCALE / 2) const noexcept;
         bool isValid() const noexcept;
 
         void deactivate() noexcept;

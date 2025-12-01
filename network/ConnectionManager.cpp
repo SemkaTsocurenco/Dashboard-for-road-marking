@@ -1,6 +1,7 @@
 #include "ConnectionManager.h"
 #include "LoggerMacros.hpp"
 #include "proto_parser.h"
+#include "AppConfig.hpp"
 #include <qnamespace.h>
 #include <qobjectdefs.h>
 #include <QTimer>
@@ -37,9 +38,9 @@ namespace network {
             return;
         }
 
-        if (port <= 0 || port > 65535) {
+        if (port <= 0 || port > config::NetworkConfig::MAX_PORT) {
             LOG_ERROR << "Cannot connect: invalid port " << port;
-            setLastError("Invalid port: must be between 1 and 65535");
+            setLastError(QString("Invalid port: must be between 1 and %1").arg(config::NetworkConfig::MAX_PORT));
             setState(State::Error);
             return;
         }
@@ -259,9 +260,11 @@ namespace network {
         if (reconnect_interval_ == milliseconds)
             return;
 
-        if (milliseconds < 100 || milliseconds > 60000) {
+        if (milliseconds < config::NetworkConfig::MIN_RECONNECT_INTERVAL_MS ||
+            milliseconds > config::NetworkConfig::MAX_RECONNECT_INTERVAL_MS) {
             LOG_WARN << "Invalid reconnect interval: " << milliseconds
-                     << " (must be 100-60000ms), ignoring";
+                     << " (must be " << config::NetworkConfig::MIN_RECONNECT_INTERVAL_MS
+                     << "-" << config::NetworkConfig::MAX_RECONNECT_INTERVAL_MS << "ms), ignoring";
             return;
         }
 
@@ -277,10 +280,10 @@ namespace network {
         if (max_reconnect_attempts_ == attempts)
             return;
 
-        // Validate max reconnect attempts (0 = unlimited, max 1000)
-        if (attempts < 0 || attempts > 1000) {
+        // Validate max reconnect attempts (0 = unlimited, max limit from config)
+        if (attempts < 0 || attempts > config::NetworkConfig::MAX_RECONNECT_ATTEMPTS_LIMIT) {
             LOG_WARN << "Invalid max reconnect attempts: " << attempts
-                     << " (must be 0-1000), ignoring";
+                     << " (must be 0-" << config::NetworkConfig::MAX_RECONNECT_ATTEMPTS_LIMIT << "), ignoring";
             return;
         }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "proto_parser.h"
+#include "AppConfig.hpp"
 #include <vector>
 #include <ostream>
 
@@ -29,7 +30,7 @@ namespace domain {
         [[nodiscard]] laneproto::LineStyle lineStyle() const noexcept { return style_; }
 
         [[nodiscard]] bool isValid() const noexcept;
-        [[nodiscard]] bool isConfident(std::uint8_t threshold = 128) const noexcept;
+        [[nodiscard]] bool isConfident(std::uint8_t threshold = config::ProtocolConfig::QUALITY_RAW_MAX / 2) const noexcept;
 
         // Generate points along the polynomial curve
         [[nodiscard]] std::vector<std::pair<float, float>> generatePoints(int numPoints = 50) const;

@@ -1,5 +1,6 @@
 #include "MarkingOverlayProcessor.hpp"
 #include "LoggerMacros.hpp"
+#include "AppConfig.hpp"
 #include <QPen>
 #include <QBrush>
 #include <QVariant>
@@ -294,8 +295,10 @@ void MarkingOverlayProcessor::drawLaneOverlay(QPainter& painter, const QSize& im
     painter.setPen(Qt::white);
     painter.setFont(QFont("Arial", 10, QFont::Bold));
 
-    // Фон для текста
-    QRect textBg(5, 5, 250, 50);
+    // Фон для текста (using config values)
+    const auto& overlay_cfg = config::VideoProcessingConfig{}.overlay;
+    QRect textBg(overlay_cfg.text_padding_x, overlay_cfg.text_padding_y,
+                 overlay_cfg.text_background_width, overlay_cfg.text_background_height);
     painter.fillRect(textBg, QColor(0, 0, 0, 150));
 
     painter.drawText(10, 20, QString("Lane Width: %1m").arg(m_laneStateViewModel->laneWidthMeters(), 0, 'f', 2));
@@ -360,6 +363,7 @@ void MarkingOverlayProcessor::drawWarnings(QPainter& painter, const QSize& image
         const QString message = m_warningListModel->data(index, viewmodels::WarningListModel::MessageRole).toString();
         const float distance = m_warningListModel->data(index, viewmodels::WarningListModel::DistanceMetersRole).toFloat();
 
+        const auto& overlay_cfg = config::VideoProcessingConfig{}.overlay;
         QColor bgColor = isCritical ? QColor(220, 0, 0, 180) : QColor(255, 165, 0, 180);
         QColor textColor = Qt::white;
 
@@ -467,9 +471,10 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
     LOG_DEBUG << "Drawing " << m_fittedLinesModel.size() << " fitted lines on image size: "
               << imageSize.width() << "x" << imageSize.height();
 
-    // Python sends coordinates for 640x480 image, scale to current size
-    const float scaleX = static_cast<float>(imageSize.width()) / 640.0f;
-    const float scaleY = static_cast<float>(imageSize.height()) / 480.0f;
+    // Python sends coordinates for configured source resolution, scale to current size
+    const auto& overlay_cfg = config::VideoProcessingConfig{}.overlay;
+    const float scaleX = static_cast<float>(imageSize.width()) / overlay_cfg.fitted_line_source_width;
+    const float scaleY = static_cast<float>(imageSize.height()) / overlay_cfg.fitted_line_source_height;
 
     LOG_DEBUG << "Scaling factors: scaleX=" << scaleX << ", scaleY=" << scaleY;
 
@@ -483,7 +488,7 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
         LOG_DEBUG << "Line: y_range=[" << line.yStart() << "," << line.yEnd()
                   << "], poly=[" << line.polyA() << "," << line.polyB() << "," << line.polyC() << "]";
 
-        auto points = line.generatePoints(100);
+        auto points = line.generatePoints(overlay_cfg.fitted_line_points_count);
         if (points.empty()) {
             LOG_WARN << "generatePoints returned empty vector";
             continue;
@@ -546,13 +551,13 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
         outlinePen.setCapStyle(Qt::RoundCap);
         outlinePen.setJoinStyle(Qt::RoundJoin);
         painter.setPen(outlinePen);
-        painter.setOpacity(0.5);
+        painter.setOpacity(overlay_cfg.normal_opacity);
 
         for (int i = 1; i < screenPoints.size(); ++i) {
             painter.drawLine(screenPoints[i-1], screenPoints[i]);
         }
 
-        painter.setOpacity(1.0);
+        painter.setOpacity(overlay_cfg.full_opacity);
 
         // Then draw the actual line on top
         QPen pen(color, penWidth, penStyle);
@@ -586,11 +591,13 @@ void MarkingOverlayProcessor::drawMarkingObjectWithContour(QPainter& painter, co
     QRectF rect(-widthPx / 2.0f, -lengthPx / 2.0f, widthPx, lengthPx);
 
     // Специализированная отрисовка для разных типов
+    const auto& overlay_cfg = config::VideoProcessingConfig{}.overlay;
+
     if (isCrosswalk) {
         // Пешеходный переход - рисуем полоски
         painter.setPen(QPen(color, 2, Qt::SolidLine));
         QColor fillColor = color;
-        fillColor.setAlpha(100);
+        fillColor.setAlpha(overlay_cfg.shape_alpha_low);
         painter.setBrush(QBrush(fillColor));
 
         // Рисуем зебру
@@ -611,7 +618,7 @@ void MarkingOverlayProcessor::drawMarkingObjectWithContour(QPainter& painter, co
         // Стрелка - рисуем упрощенную форму стрелки
         painter.setPen(QPen(color, 3, Qt::SolidLine));
         QColor fillColor = color;
-        fillColor.setAlpha(120);
+        fillColor.setAlpha(overlay_cfg.shape_alpha_high);
         painter.setBrush(QBrush(fillColor));
 
         // Тело стрелки
@@ -632,7 +639,7 @@ void MarkingOverlayProcessor::drawMarkingObjectWithContour(QPainter& painter, co
         // Обычный объект - прямоугольник
         painter.setPen(QPen(color, 2, Qt::SolidLine));
         QColor fillColor = color;
-        fillColor.setAlpha(80);
+        fillColor.setAlpha(overlay_cfg.shape_alpha_low - 20);  // 80 when default is 100
         painter.setBrush(QBrush(fillColor));
         painter.drawRect(rect);
 

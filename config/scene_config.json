@@ -1,0 +1,76 @@
+{
+  "camera": {
+    "height": 250.0,
+    "distance": -25.0,
+    "pitch_angle_deg": -35.0,
+    "clip_near": 0.1,
+    "clip_far": 1000.0
+  },
+  "lighting": {
+    "main_light_brightness": 0.7,
+    "secondary_light_brightness": 0.45,
+    "tertiary_light_brightness": 0.25,
+    "point_light_y_position": 10.0,
+    "point_light_brightness": 5.0,
+    "point_light_constant_fade": 1.0,
+    "point_light_linear_fade": 0.1,
+    "point_light_quadratic_fade": 0.5
+  },
+  "road": {
+    "width_m": 18.0,
+    "length_m": 40.0,
+    "thickness_m": 0.01,
+    "y_position": -0.05,
+    "edge_line_width": 0.15,
+    "center_line_width": 0.1,
+    "center_dash_count": 12,
+    "dash_length_ratio": 0.5,
+    "line_y_offset": 0.02,
+    "material": {
+      "metalness": 0.0,
+      "roughness": 0.9,
+      "specular": 0.0,
+      "emissive": 0.07
+    }
+  },
+  "marking": {
+    "y_position_above_plane": 0.02,
+    "min_width_m": 0.05,
+    "height_m": 0.03,
+    "min_length_m": 0.2,
+    "min_opacity": 0.3,
+    "max_opacity": 1.0,
+    "confidence_divisor": 100.0,
+    "emissive_factor_scale": 0.8,
+    "roughness_solid": 0.55,
+    "roughness_dashed": 0.8
+  },
+  "car": {
+    "y_elevation": 0.6,
+    "marker_scale": 0.08,
+    "marker_y_position": 0.1
+  },
+  "center_offset": {
+    "width": 320,
+    "height": 130,
+    "max_offset_m": 1.0,
+    "normalization_divisor": 1.0,
+    "normalization_multiplier": 2.0,
+    "safe_threshold_m": 0.3,
+    "critical_threshold_m": 0.6
+  },
+  "dashboard": {
+    "width": 800,
+    "height": 600,
+    "camera_info_width": 350,
+    "camera_info_height": 80
+  },
+  "warning_panel": {
+    "width": 360,
+    "color_animation_duration_ms": 150,
+    "connected_opacity": 1.0,
+    "disconnected_opacity": 0.7,
+    "panel_opacity": 0.8,
+    "overlay_opacity": 0.92
+  }
+}

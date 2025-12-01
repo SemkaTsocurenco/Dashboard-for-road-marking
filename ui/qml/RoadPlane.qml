@@ -5,17 +5,17 @@ Node {
     id: root
 
     // Basic dimensions
-    property real widthMeters: 18.0
-    property real lengthMeters: 40.0
-    property real thicknessMeters: 0.01
+    property real widthMeters: sceneConfig.roadWidth
+    property real lengthMeters: sceneConfig.roadLength
+    property real thicknessMeters: sceneConfig.roadThickness
 
     // Line styling
-    property real edgeLineWidth: 0.15
-    property real centerLineWidth: 0.1
-    property int dashCount: 12
+    property real edgeLineWidth: sceneConfig.edgeLineWidth
+    property real centerLineWidth: sceneConfig.centerLineWidth
+    property int dashCount: sceneConfig.centerDashCount
 
-    readonly property real planeY: -0.05
-    readonly property real lineY: planeY + 0.02
+    readonly property real planeY: sceneConfig.roadYPosition
+    readonly property real lineY: planeY + sceneConfig.lineYOffset
 
     // Road surface
     Model {
@@ -26,10 +26,10 @@ Node {
 
         materials: PrincipledMaterial {
             baseColor: "#2d2d2d"
-            metalness: 0.0
-            roughness: 0.9
-            specularAmount: 0.0
-            emissiveFactor: Qt.vector3d(0.07, 0.07, 0.07)
+            metalness: sceneConfig.roadMetalness
+            roughness: sceneConfig.roadRoughness
+            specularAmount: sceneConfig.roadSpecular
+            emissiveFactor: Qt.vector3d(sceneConfig.roadEmissive, sceneConfig.roadEmissive, sceneConfig.roadEmissive)
         }
     }
 
@@ -67,7 +67,7 @@ Node {
             source: "#Cube"
 
             readonly property real dashSpacing: root.lengthMeters / root.dashCount
-            readonly property real dashLength: dashSpacing * 0.5
+            readonly property real dashLength: dashSpacing * sceneConfig.dashLengthRatio
 
             position: Qt.vector3d(0, lineY, -root.lengthMeters / 2 + (index + 0.5) * dashSpacing)
             scale: Qt.vector3d(root.centerLineWidth, root.thicknessMeters * 2, dashLength)
