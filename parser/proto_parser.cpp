@@ -34,6 +34,26 @@ namespace {
         return f;
     }
 
+    inline laneproto::LineColor decode_line_color(std::uint8_t raw) {
+        // Protocol: 0=white, 1=yellow, 2=red
+        switch (raw) {
+            case 0: return laneproto::LineColor::White;
+            case 1: return laneproto::LineColor::Yellow;
+            case 2: return laneproto::LineColor::Red;
+            default: return laneproto::LineColor::Unknown;
+        }
+    }
+
+    inline laneproto::LineStyle decode_line_style(std::uint8_t raw) {
+        // Protocol: 0=unknown, 1=solid, 2=double, 3=dashed
+        switch (raw) {
+            case 1: return laneproto::LineStyle::Solid;
+            case 2: return laneproto::LineStyle::Double;
+            case 3: return laneproto::LineStyle::Dashed;
+            default: return laneproto::LineStyle::Unknown;
+        }
+    }
+
     inline std::uint16_t crc16_ibm (const std::uint8_t* data, std::size_t len){
         std::uint16_t crc = 0xFFFF;
 
@@ -265,8 +285,8 @@ namespace laneproto {
             obj.width_m = static_cast<float>(width_decim) / 10.0f;
             obj.yaw_deg = static_cast<float>(yaw_decideg) / 10.0f;
 
-            obj.line_color = static_cast<LineColor>(p[11]);
-            obj.line_style = static_cast<LineStyle>(p[12]);
+            obj.line_color = decode_line_color(p[11]);
+            obj.line_style = decode_line_style(p[12]);
 
             obj.confidence = p[13];
             obj.flags = p[14];
@@ -364,8 +384,8 @@ namespace laneproto {
         msg.left.type = static_cast<LaneType>(payload_buf_[offset++]);
         msg.right.type = static_cast<LaneType>(payload_buf_[offset++]);
 
-        msg.left.color = static_cast<LineColor>(payload_buf_[offset++]);
-        msg.right.color = static_cast<LineColor>(payload_buf_[offset++]);
+        msg.left.color = decode_line_color(payload_buf_[offset++]);
+        msg.right.color = decode_line_color(payload_buf_[offset++]);
 
         if (offset + 2 > payload_buf_.size()) {
             ParseError err;
@@ -480,8 +500,8 @@ namespace laneproto {
 
             line.class_id = static_cast<MarkingClassId>(p[0]);
             line.side = static_cast<LineSide>(p[1]);
-            line.color = static_cast<LineColor>(p[2]);
-            line.style = static_cast<LineStyle>(p[3]);
+            line.color = decode_line_color(p[2]);
+            line.style = decode_line_style(p[3]);
 
             line.poly_a = read_le_float32(p + 4);
             line.poly_b = read_le_float32(p + 8);

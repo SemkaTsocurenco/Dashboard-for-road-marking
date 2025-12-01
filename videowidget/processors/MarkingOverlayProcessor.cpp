@@ -5,6 +5,7 @@
 #include <QBrush>
 #include <QVariant>
 #include <QPointF>
+#include <QPainterPath>
 
 using namespace video;
 
@@ -26,11 +27,14 @@ namespace {
 
     QColor objectColorFromStrings(const QString& colorStr, const QString& styleStr,
                                   bool isCrosswalk, bool isArrow) {
+        // Class-specific coloring has priority over protocol color for readability
+        if (isCrosswalk) return QColor("#00ffff");
+        if (isArrow)     return QColor("#ff00ff");
+
         if (!colorStr.isEmpty() && colorStr != "Unknown") {
             return laneColorFromString(colorStr);
         }
-        if (isCrosswalk) return QColor("#00ffff");
-        if (isArrow)     return QColor("#ff00ff");
+
         if (styleStr.toLower() == "double") return QColor("#ffd700");
         return QColor("#4da3ff");
     }
@@ -471,22 +475,20 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
     LOG_DEBUG << "Drawing " << m_fittedLinesModel.size() << " fitted lines on image size: "
               << imageSize.width() << "x" << imageSize.height();
 
-    // Python sends coordinates for configured source resolution, scale to current size
     const auto& overlay_cfg = config::VideoProcessingConfig{}.overlay;
-    const float scaleX = static_cast<float>(imageSize.width()) / overlay_cfg.fitted_line_source_width;
-    const float scaleY = static_cast<float>(imageSize.height()) / overlay_cfg.fitted_line_source_height;
-
-    LOG_DEBUG << "Scaling factors: scaleX=" << scaleX << ", scaleY=" << scaleY;
 
     for (const auto& line : m_fittedLinesModel.lines()) {
 
-        if (!line.isValid() || !line.isConfident(50)) {
-            LOG_DEBUG << "Skipping invalid or low confidence line";
+        if (!line.isValid()) {
+            LOG_WARN << "Skipping invalid fitted line: y_range=[" << line.yStart() << "," << line.yEnd()
+                     << "], poly=[" << line.polyA() << "," << line.polyB() << "," << line.polyC() << "]";
             continue;
         }
 
         LOG_DEBUG << "Line: y_range=[" << line.yStart() << "," << line.yEnd()
-                  << "], poly=[" << line.polyA() << "," << line.polyB() << "," << line.polyC() << "]";
+                  << "], poly=[" << line.polyA() << "," << line.polyB() << "," << line.polyC() << "]"
+                  << ", conf=" << static_cast<int>(line.confidence())
+                  << ", quality=" << static_cast<int>(line.quality());
 
         auto points = line.generatePoints(overlay_cfg.fitted_line_points_count);
         if (points.empty()) {
@@ -499,11 +501,9 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
         QVector<QPointF> screenPoints;
         screenPoints.reserve(points.size());
 
+        // Detector already provides pixel coordinates in the source frame space
         for (const auto& [x_px, y_px] : points) {
-            // Scale from 640x480 to actual image size
-            float scaled_x = x_px * scaleX;
-            float scaled_y = y_px * scaleY;
-            screenPoints.push_back(QPointF(scaled_x, scaled_y));
+            screenPoints.push_back(QPointF(x_px, y_px));
         }
 
         if (screenPoints.size() < 2) {
@@ -511,8 +511,8 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
             continue;
         }
 
-        LOG_DEBUG << "First point (scaled): (" << screenPoints[0].x() << "," << screenPoints[0].y() << ")";
-        LOG_DEBUG << "Last point (scaled): (" << screenPoints.last().x() << "," << screenPoints.last().y() << ")";
+        LOG_DEBUG << "First point: (" << screenPoints[0].x() << "," << screenPoints[0].y() << ")";
+        LOG_DEBUG << "Last point: (" << screenPoints.last().x() << "," << screenPoints.last().y() << ")";
 
         QColor color = getColorForClassId(line.classId(), line.lineColor());
 
@@ -520,6 +520,12 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
                   << ", classId=" << static_cast<int>(line.classId())
                   << ", lineColor=" << static_cast<int>(line.lineColor())
                   << ", lineStyle=" << static_cast<int>(line.lineStyle());
+
+        // Build a single path so dash pattern spans the whole polyline instead of restarting per segment
+        QPainterPath linePath(screenPoints.first());
+        for (int i = 1; i < screenPoints.size(); ++i) {
+            linePath.lineTo(screenPoints[i]);
+        }
 
         Qt::PenStyle penStyle = Qt::SolidLine;
         int penWidth = 4;
@@ -531,6 +537,7 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
                 break;
             case laneproto::LineStyle::Dashed:
                 penStyle = Qt::DashLine;
+                
                 penWidth = 4;
                 break;
             case laneproto::LineStyle::Double:
@@ -553,9 +560,7 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
         painter.setPen(outlinePen);
         painter.setOpacity(overlay_cfg.normal_opacity);
 
-        for (int i = 1; i < screenPoints.size(); ++i) {
-            painter.drawLine(screenPoints[i-1], screenPoints[i]);
-        }
+        painter.drawPath(linePath);
 
         painter.setOpacity(overlay_cfg.full_opacity);
 
@@ -565,9 +570,7 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
         pen.setJoinStyle(Qt::RoundJoin);
         painter.setPen(pen);
 
-        for (int i = 1; i < screenPoints.size(); ++i) {
-            painter.drawLine(screenPoints[i-1], screenPoints[i]);
-        }
+        painter.drawPath(linePath);
 
         LOG_DEBUG << "Line drawing completed successfully";
     }
@@ -636,37 +639,37 @@ void MarkingOverlayProcessor::drawMarkingObjectWithContour(QPainter& painter, co
         painter.drawPolygon(arrowHead);
 
     } else {
-        // Обычный объект - прямоугольник
-        painter.setPen(QPen(color, 2, Qt::SolidLine));
-        QColor fillColor = color;
-        fillColor.setAlpha(overlay_cfg.shape_alpha_low - 20);  // 80 when default is 100
-        painter.setBrush(QBrush(fillColor));
-        painter.drawRect(rect);
+        // // Обычный объект - прямоугольник
+        // painter.setPen(QPen(color, 2, Qt::SolidLine));
+        // QColor fillColor = color;
+        // fillColor.setAlpha(overlay_cfg.shape_alpha_low - 20);  // 80 when default is 100
+        // painter.setBrush(QBrush(fillColor));
+        // painter.drawRect(rect);
 
-        // Толстый контур
-        painter.setPen(QPen(color, 3, Qt::SolidLine));
-        painter.setBrush(Qt::NoBrush);
-        painter.drawRect(rect);
+        // // Толстый контур
+        // painter.setPen(QPen(color, 3, Qt::SolidLine));
+        // painter.setBrush(Qt::NoBrush);
+        // painter.drawRect(rect);
     }
 
     painter.restore();
 
-    // Центральная точка
-    painter.setPen(QPen(Qt::white, 2));
-    painter.setBrush(QBrush(color));
-    painter.drawEllipse(center, 4, 4);
+    // // Центральная точка
+    // painter.setPen(QPen(Qt::white, 2));
+    // painter.setBrush(QBrush(color));
+    // painter.drawEllipse(center, 4, 4);
 
-    // Метка с названием
-    painter.setPen(Qt::white);
-    painter.setFont(QFont("Arial", 9, QFont::Bold));
+    // // Метка с названием
+    // painter.setPen(Qt::white);
+    // painter.setFont(QFont("Arial", 9, QFont::Bold));
 
-    // Фон для текста
-    QString label = className;
-    QFontMetrics fm(painter.font());
-    QRect textRect = fm.boundingRect(label);
-    textRect.moveCenter(QPoint(center.x() + textRect.width()/2 + 10, center.y() - 10));
-    textRect.adjust(-3, -1, 3, 1);
+    // // Фон для текста
+    // QString label = className;
+    // QFontMetrics fm(painter.font());
+    // QRect textRect = fm.boundingRect(label);
+    // textRect.moveCenter(QPoint(center.x() + textRect.width()/2 + 10, center.y() - 10));
+    // textRect.adjust(-3, -1, 3, 1);
 
-    painter.fillRect(textRect, QColor(0, 0, 0, 180));
-    painter.drawText(textRect, Qt::AlignCenter, label);
+    // painter.fillRect(textRect, QColor(0, 0, 0, 180));
+    // painter.drawText(textRect, Qt::AlignCenter, label);
 }
