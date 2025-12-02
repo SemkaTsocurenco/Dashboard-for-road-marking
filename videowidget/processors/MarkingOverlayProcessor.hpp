@@ -81,7 +81,8 @@ namespace video {
         void drawMarkingObjectWithContour(QPainter& painter, const QSize& imageSize,
                                          float x, float y, float length, float width,
                                          float yaw, const QString& className,
-                                         const QColor& color, bool isCrosswalk, bool isArrow);
+                                         const QColor& color, bool isCrosswalk, bool isArrow,
+                                         float distance);
 
         QPointF worldToImage(float x, float y, const QSize& imageSize) const;
         QColor getColorForClassId(laneproto::MarkingClassId classId, laneproto::LineColor lineColor) const;

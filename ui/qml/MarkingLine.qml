@@ -25,13 +25,18 @@ Model {
 
     // Keep markings slightly above the plane to avoid z-fighting
     // Invert Y coordinate to match camera view direction (camera looks toward -Z)
-    position: Qt.vector3d(xMeters, sceneConfig.markingYPosition, -yMeters)
+    // Apply scale_factor to convert meters to scene units
+    position: Qt.vector3d(
+        xMeters * sceneConfig.scaleFactor,
+        sceneConfig.markingYPosition,
+        -yMeters * sceneConfig.scaleFactor
+    )
 
-    // Use real-world meters directly
+    // Apply scale_factor to marking dimensions
     scale: Qt.vector3d(
-        Math.max(widthMeters, sceneConfig.markingMinWidth),
+        Math.max(widthMeters * sceneConfig.scaleFactor, sceneConfig.markingMinWidth),
         sceneConfig.markingHeight,
-        Math.max(lengthMeters, sceneConfig.markingMinLength)
+        Math.max(lengthMeters * sceneConfig.scaleFactor, sceneConfig.markingMinLength)
     )
 
     eulerRotation.y: -yawDeg

@@ -66,8 +66,9 @@ void DashboardWidget::setAppController(app::AppController* controller) {
     context->setContextProperty("markingModel", controller->markingListModel());
     context->setContextProperty("warningModel", controller->warningListModel());
 
-    // Create and register SceneConfigViewModel with default config
-    auto* sceneConfigViewModel = new viewmodels::SceneConfigViewModel(config::SceneConfig(), this);
+    // Load scene configuration from file
+    config::SceneConfig sceneConfig = config::SceneConfig::loadFromFile("config/scene_config.json");
+    auto* sceneConfigViewModel = new viewmodels::SceneConfigViewModel(sceneConfig, this);
     context->setContextProperty("sceneConfig", sceneConfigViewModel);
 
     // Ensure standard import path is present (helps when system Qt is in a non-default location)

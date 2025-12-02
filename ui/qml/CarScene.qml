@@ -15,7 +15,7 @@ Node {
         id: camera
         position: Qt.vector3d(0, cameraHeight, cameraDistance) // look toward -Z
         eulerRotation: Qt.vector3d(sceneConfig.cameraPitchAngle, 0, 0) // tilt downward toward the road
-        fieldOfView: 60
+        fieldOfView: 75
         clipNear: sceneConfig.cameraClipNear
         clipFar: sceneConfig.cameraClipFar
     }
@@ -58,7 +58,8 @@ Node {
 
     CarModel {
         // Lift slightly above the plane so it is clearly visible
-        position: Qt.vector3d(0, sceneConfig.carYElevation, 0)
+        // carYElevation is in meters, multiply by scaleFactor
+        position: Qt.vector3d(0, sceneConfig.carYElevation * sceneConfig.scaleFactor, 0)
     }
 
 
@@ -80,9 +81,14 @@ Node {
         Model {
             required property var modelData
             source: "#Sphere"
-            scale: Qt.vector3d(sceneConfig.markerScale, sceneConfig.markerScale, sceneConfig.markerScale)
-            // Invert Y to match camera view direction
-            position: Qt.vector3d(modelData.x, sceneConfig.markerYPosition, -modelData.y)
+            readonly property real scaledMarkerSize: sceneConfig.markerScale * sceneConfig.scaleFactor
+            scale: Qt.vector3d(scaledMarkerSize, scaledMarkerSize, scaledMarkerSize)
+            // Invert Y to match camera view direction and apply scale_factor
+            position: Qt.vector3d(
+                modelData.x * sceneConfig.scaleFactor,
+                sceneConfig.markerYPosition * sceneConfig.scaleFactor,
+                -modelData.y * sceneConfig.scaleFactor
+            )
             materials: PrincipledMaterial {
                 baseColor: "#ffd700"
                 emissiveFactor: Qt.vector3d(0.3, 0.3, 0.0)
@@ -98,9 +104,14 @@ Node {
         Model {
             required property var modelData
             source: "#Sphere"
-            scale: Qt.vector3d(sceneConfig.markerScale, sceneConfig.markerScale, sceneConfig.markerScale)
-            // Invert Y to match camera view direction
-            position: Qt.vector3d(modelData.x, sceneConfig.markerYPosition, -modelData.y)
+            readonly property real scaledMarkerSize: sceneConfig.markerScale * sceneConfig.scaleFactor
+            scale: Qt.vector3d(scaledMarkerSize, scaledMarkerSize, scaledMarkerSize)
+            // Invert Y to match camera view direction and apply scale_factor
+            position: Qt.vector3d(
+                modelData.x * sceneConfig.scaleFactor,
+                sceneConfig.markerYPosition * sceneConfig.scaleFactor,
+                -modelData.y * sceneConfig.scaleFactor
+            )
             materials: PrincipledMaterial {
                 baseColor: "#ffffff"
                 emissiveFactor: Qt.vector3d(0.3, 0.3, 0.3)

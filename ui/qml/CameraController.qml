@@ -21,9 +21,9 @@ Item {
     focus: true
 
     Keys.onPressed: (event) => {
-        var forward = Qt.vector3d(0, 0, -1);
-        var right = Qt.vector3d(1, 0, 0);
-        var up = Qt.vector3d(0, 1, 0);
+        var forward = Qt.vector3d(0, 0, -40);
+        var right = Qt.vector3d(40, 0, 0);
+        var up = Qt.vector3d(0, 40, 0);
 
         // Rotate vectors based on camera rotation
         var yaw = camera.eulerRotation.y * Math.PI / 180;

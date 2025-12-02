@@ -1,6 +1,24 @@
 #include "SceneConfig.hpp"
+#include "LoggerMacros.hpp"
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonParseError>
 
 namespace config {
+
+// SceneScaleSettings
+QJsonObject SceneScaleSettings::toJson() const {
+    QJsonObject json;
+    json["scale_factor"] = static_cast<double>(scale_factor);
+    return json;
+}
+
+SceneScaleSettings SceneScaleSettings::fromJson(const QJsonObject& json) {
+    SceneScaleSettings settings;
+    if (json.contains("scale_factor"))
+        settings.scale_factor = static_cast<float>(json["scale_factor"].toDouble());
+    return settings;
+}
 
 // CameraSettings
 QJsonObject CameraSettings::toJson() const {
@@ -270,6 +288,7 @@ WarningPanelSettings WarningPanelSettings::fromJson(const QJsonObject& json) {
 // SceneConfig
 QJsonObject SceneConfig::toJson() const {
     QJsonObject json;
+    json["scale"] = scale.toJson();
     json["camera"] = camera.toJson();
     json["lighting"] = lighting.toJson();
     json["road"] = road.toJson();
@@ -283,6 +302,8 @@ QJsonObject SceneConfig::toJson() const {
 
 SceneConfig SceneConfig::fromJson(const QJsonObject& json) {
     SceneConfig config;
+    if (json.contains("scale"))
+        config.scale = SceneScaleSettings::fromJson(json["scale"].toObject());
     if (json.contains("camera"))
         config.camera = CameraSettings::fromJson(json["camera"].toObject());
     if (json.contains("lighting"))
@@ -300,6 +321,33 @@ SceneConfig SceneConfig::fromJson(const QJsonObject& json) {
     if (json.contains("warning_panel"))
         config.warning_panel = WarningPanelSettings::fromJson(json["warning_panel"].toObject());
     return config;
+}
+
+SceneConfig SceneConfig::loadFromFile(const QString& path) {
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        LOG_WARN << "Failed to load scene config from " << path.toStdString() << ", using defaults";
+        return SceneConfig(); // Return default config
+    }
+
+    QByteArray data = file.readAll();
+    file.close();
+
+    QJsonParseError parse_error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &parse_error);
+
+    if (parse_error.error != QJsonParseError::NoError) {
+        LOG_WARN << "Scene config JSON parse error: " << parse_error.errorString().toStdString();
+        return SceneConfig(); // Return default config
+    }
+
+    if (!doc.isObject()) {
+        LOG_WARN << "Scene config root must be a JSON object";
+        return SceneConfig(); // Return default config
+    }
+
+    LOG_INFO << "Scene config loaded successfully from " << path.toStdString();
+    return fromJson(doc.object());
 }
 
 } // namespace config

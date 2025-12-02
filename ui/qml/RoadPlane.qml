@@ -4,7 +4,7 @@ import QtQuick3D
 Node {
     id: root
 
-    // Basic dimensions
+    // Basic dimensions in meters
     property real widthMeters: sceneConfig.roadWidth
     property real lengthMeters: sceneConfig.roadLength
     property real thicknessMeters: sceneConfig.roadThickness
@@ -17,12 +17,19 @@ Node {
     readonly property real planeY: sceneConfig.roadYPosition
     readonly property real lineY: planeY + sceneConfig.lineYOffset
 
+    // Apply scale_factor to convert meters to scene units
+    readonly property real scaleFactor: sceneConfig.scaleFactor
+    readonly property real scaledWidth: widthMeters * scaleFactor
+    readonly property real scaledLength: lengthMeters * scaleFactor
+    readonly property real scaledEdgeLineWidth: edgeLineWidth * scaleFactor
+    readonly property real scaledCenterLineWidth: centerLineWidth * scaleFactor
+
     // Road surface
     Model {
         id: plane
         source: "#Cube"
         position: Qt.vector3d(0, planeY, 0)
-        scale: Qt.vector3d(widthMeters, thicknessMeters, lengthMeters)
+        scale: Qt.vector3d(scaledWidth, thicknessMeters, scaledLength)
 
         materials: PrincipledMaterial {
             baseColor: "#2d2d2d"
@@ -36,8 +43,8 @@ Node {
     // Left edge line
     Model {
         source: "#Cube"
-        position: Qt.vector3d(-widthMeters / 2 + edgeLineWidth / 2, lineY, 0)
-        scale: Qt.vector3d(edgeLineWidth, thicknessMeters * 2, lengthMeters)
+        position: Qt.vector3d(-scaledWidth / 2 + scaledEdgeLineWidth / 2, lineY, 0)
+        scale: Qt.vector3d(scaledEdgeLineWidth, thicknessMeters * 2, scaledLength)
         materials: PrincipledMaterial {
             baseColor: "#d0d0d0"
             roughness: 0.75
@@ -49,8 +56,8 @@ Node {
     // Right edge line
     Model {
         source: "#Cube"
-        position: Qt.vector3d(widthMeters / 2 - edgeLineWidth / 2, lineY, 0)
-        scale: Qt.vector3d(edgeLineWidth, thicknessMeters * 2, lengthMeters)
+        position: Qt.vector3d(scaledWidth / 2 - scaledEdgeLineWidth / 2, lineY, 0)
+        scale: Qt.vector3d(scaledEdgeLineWidth, thicknessMeters * 2, scaledLength)
         materials: PrincipledMaterial {
             baseColor: "#d0d0d0"
             roughness: 0.75
@@ -66,11 +73,11 @@ Node {
         delegate: Model {
             source: "#Cube"
 
-            readonly property real dashSpacing: root.lengthMeters / root.dashCount
+            readonly property real dashSpacing: root.scaledLength / root.dashCount
             readonly property real dashLength: dashSpacing * sceneConfig.dashLengthRatio
 
-            position: Qt.vector3d(0, lineY, -root.lengthMeters / 2 + (index + 0.5) * dashSpacing)
-            scale: Qt.vector3d(root.centerLineWidth, root.thicknessMeters * 2, dashLength)
+            position: Qt.vector3d(0, lineY, -root.scaledLength / 2 + (index + 0.5) * dashSpacing)
+            scale: Qt.vector3d(root.scaledCenterLineWidth, root.thicknessMeters * 2, dashLength)
 
             materials: PrincipledMaterial {
                 baseColor: "#ededed"

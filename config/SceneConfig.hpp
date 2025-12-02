@@ -5,6 +5,16 @@
 
 namespace config {
 
+struct SceneScaleSettings {
+    // Scale factor: meters to QML scene units
+    // 1.0 = 1 meter = 1 QML unit (direct mapping)
+    float scale_factor{5.0f};
+
+    QJsonObject toJson() const;
+    static SceneScaleSettings fromJson(const QJsonObject& json);
+};
+
+
 struct CameraSettings {
     // Camera position
     float height{250.0f};
@@ -156,6 +166,7 @@ struct WarningPanelSettings {
 
 
 struct SceneConfig {
+    SceneScaleSettings scale;
     CameraSettings camera;
     LightingSettings lighting;
     RoadSettings road;
@@ -167,6 +178,7 @@ struct SceneConfig {
 
     QJsonObject toJson() const;
     static SceneConfig fromJson(const QJsonObject& json);
+    static SceneConfig loadFromFile(const QString& path);
 };
 
 } // namespace config

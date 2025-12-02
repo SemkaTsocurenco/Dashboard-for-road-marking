@@ -62,8 +62,12 @@ rebuild: distclean build
 
 # Запуск приложения
 run: build
+	@echo "=== Копирование конфигурационных файлов ==="
+	@mkdir -p build/config
+	@cp config/default_config.json build/config.json
+	@cp config/scene_config.json build/config/
 	@echo "=== Запуск приложения ==="
-	@./$(BUILD_DIR)/dashboard
+	@cd $(BUILD_DIR) && ./dashboard
 
 # Установка зависимостей (Qt6, OpenCV)
 install-deps:

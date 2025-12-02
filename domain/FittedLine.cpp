@@ -97,6 +97,36 @@ namespace domain {
         return points;
     }
 
+    float FittedLine::getStartDistance() const noexcept {
+        if (!isValid()) {
+            return 0.0f;
+        }
+        const float y = static_cast<float>(y_start_);
+        const float x = poly_a_ * y * y + poly_b_ * y + poly_c_;
+        // Note: y_start_ and y_end_ are in pixels, need to convert to meters
+        // According to worldToImage: y_dm = ((h - cy) / h) * 100
+        // Distance from camera (meters): sqrt(x^2 + y^2) / 10 (convert decimeters to meters)
+        return std::sqrt(x * x + y * y) / 10.0f;
+    }
+
+    float FittedLine::getMiddleDistance() const noexcept {
+        if (!isValid()) {
+            return 0.0f;
+        }
+        const float y = static_cast<float>(y_start_ + y_end_) / 2.0f;
+        const float x = poly_a_ * y * y + poly_b_ * y + poly_c_;
+        return std::sqrt(x * x + y * y) / 10.0f;
+    }
+
+    float FittedLine::getEndDistance() const noexcept {
+        if (!isValid()) {
+            return 0.0f;
+        }
+        const float y = static_cast<float>(y_end_);
+        const float x = poly_a_ * y * y + poly_b_ * y + poly_c_;
+        return std::sqrt(x * x + y * y) / 10.0f;
+    }
+
     std::ostream& operator<<(std::ostream& os, const FittedLine& line) {
         os << "FittedLine{"
            << " class_id=" << static_cast<int>(line.classId())

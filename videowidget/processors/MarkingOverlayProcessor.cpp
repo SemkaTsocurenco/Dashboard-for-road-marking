@@ -6,6 +6,7 @@
 #include <QVariant>
 #include <QPointF>
 #include <QPainterPath>
+#include <cmath>
 
 using namespace video;
 
@@ -338,9 +339,12 @@ void MarkingOverlayProcessor::drawMarkingObjects(QPainter& painter, const QSize&
 
         QColor color = objectColorFromStrings(lineColorStr, lineStyleStr, isCrosswalk, isArrow);
 
+        // Calculate distance from vehicle (x, y already in meters)
+        const float distance = std::sqrt(x * x + y * y);
+
         // Draw object with contour and size information
         drawMarkingObjectWithContour(painter, imageSize, x, y, length, width, yaw,
-                                     className, color, isCrosswalk, isArrow);
+                                     className, color, isCrosswalk, isArrow, distance);
     }
 }
 
@@ -572,6 +576,41 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
 
         painter.drawPath(linePath);
 
+        // Draw distance labels at key points (start, middle, end)
+        const float startDist = line.getStartDistance();
+        const float middleDist = line.getMiddleDistance();
+        const float endDist = line.getEndDistance();
+
+        painter.setFont(QFont("Arial", 9, QFont::Bold));
+        painter.setPen(Qt::white);
+
+        auto drawDistanceLabel = [&](const QPointF& pos, float distance) {
+            QString label = QString("%1m").arg(distance, 0, 'f', 1);
+            QFontMetrics fm(painter.font());
+            QRect textRect = fm.boundingRect(label);
+            textRect.moveCenter(QPoint(pos.x(), pos.y()));
+            textRect.adjust(-3, -1, 3, 1);
+
+            painter.fillRect(textRect, QColor(0, 0, 0, 180));
+            painter.drawText(textRect, Qt::AlignCenter, label);
+        };
+
+        if (!screenPoints.empty()) {
+            // Start point
+            drawDistanceLabel(screenPoints.first(), startDist);
+
+            // Middle point
+            if (screenPoints.size() > 1) {
+                int midIdx = screenPoints.size() / 2;
+                drawDistanceLabel(screenPoints[midIdx], middleDist);
+            }
+
+            // End point
+            if (screenPoints.size() > 1) {
+                drawDistanceLabel(screenPoints.last(), endDist);
+            }
+        }
+
         LOG_DEBUG << "Line drawing completed successfully";
     }
 }
@@ -579,7 +618,8 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
 void MarkingOverlayProcessor::drawMarkingObjectWithContour(QPainter& painter, const QSize& imageSize,
                                                             float x, float y, float length, float width,
                                                             float yaw, const QString& className,
-                                                            const QColor& color, bool isCrosswalk, bool isArrow)
+                                                            const QColor& color, bool isCrosswalk, bool isArrow,
+                                                            float distance)
 {
     QPointF center = worldToImage(x, y, imageSize);
 
@@ -654,22 +694,16 @@ void MarkingOverlayProcessor::drawMarkingObjectWithContour(QPainter& painter, co
 
     painter.restore();
 
-    // // Центральная точка
-    // painter.setPen(QPen(Qt::white, 2));
-    // painter.setBrush(QBrush(color));
-    // painter.drawEllipse(center, 4, 4);
+    // Draw distance label
+    painter.setPen(Qt::white);
+    painter.setFont(QFont("Arial", 9, QFont::Bold));
 
-    // // Метка с названием
-    // painter.setPen(Qt::white);
-    // painter.setFont(QFont("Arial", 9, QFont::Bold));
+    QString distLabel = QString("%1m").arg(distance, 0, 'f', 1);
+    QFontMetrics fm(painter.font());
+    QRect textRect = fm.boundingRect(distLabel);
+    textRect.moveCenter(QPoint(center.x(), center.y() - lengthPx / 2.0f - 15));
+    textRect.adjust(-3, -1, 3, 1);
 
-    // // Фон для текста
-    // QString label = className;
-    // QFontMetrics fm(painter.font());
-    // QRect textRect = fm.boundingRect(label);
-    // textRect.moveCenter(QPoint(center.x() + textRect.width()/2 + 10, center.y() - 10));
-    // textRect.adjust(-3, -1, 3, 1);
-
-    // painter.fillRect(textRect, QColor(0, 0, 0, 180));
-    // painter.drawText(textRect, Qt::AlignCenter, label);
+    painter.fillRect(textRect, QColor(0, 0, 0, 180));
+    painter.drawText(textRect, Qt::AlignCenter, distLabel);
 }

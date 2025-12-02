@@ -35,6 +35,11 @@ namespace domain {
         // Generate points along the polynomial curve
         [[nodiscard]] std::vector<std::pair<float, float>> generatePoints(int numPoints = 50) const;
 
+        // Calculate distances (in meters) at key positions
+        [[nodiscard]] float getStartDistance() const noexcept;
+        [[nodiscard]] float getMiddleDistance() const noexcept;
+        [[nodiscard]] float getEndDistance() const noexcept;
+
     private:
         laneproto::MarkingClassId class_id_ = laneproto::MarkingClassId::Unknown;
         laneproto::LineSide side_ = laneproto::LineSide::Unknown;

@@ -10,6 +10,9 @@ class SceneConfigViewModel : public QObject {
     Q_OBJECT
     QML_ELEMENT
 
+    // Scale properties
+    Q_PROPERTY(float scaleFactor READ scaleFactor CONSTANT)
+
     // Camera properties
     Q_PROPERTY(float cameraHeight READ cameraHeight CONSTANT)
     Q_PROPERTY(float cameraDistance READ cameraDistance CONSTANT)
@@ -85,6 +88,9 @@ class SceneConfigViewModel : public QObject {
 public:
     explicit SceneConfigViewModel(QObject* parent = nullptr);
     explicit SceneConfigViewModel(const config::SceneConfig& config, QObject* parent = nullptr);
+
+    // Scale getters
+    float scaleFactor() const { return config_.scale.scale_factor; }
 
     // Camera getters
     float cameraHeight() const { return config_.camera.height; }
