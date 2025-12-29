@@ -3,21 +3,21 @@
     "scale_factor": 1
   },
   "camera": {
-    "height": 800.0,
-    "distance": 600.0,
-    "pitch_angle_deg": -30.0,
-    "clip_near": 1.1,
-    "clip_far": 100000.0
+    "height": 25.0,
+    "distance": 15.0,
+    "pitch_angle_deg": -45.0,
+    "clip_near": 0.1,
+    "clip_far": 500.0
   },
   "lighting": {
-    "main_light_brightness": 0.7,
-    "secondary_light_brightness": 0.45,
-    "tertiary_light_brightness": 0.25,
-    "point_light_y_position": 5.0,
-    "point_light_brightness": 8.0,
+    "main_light_brightness": 0.8,
+    "secondary_light_brightness": 0.5,
+    "tertiary_light_brightness": 0.3,
+    "point_light_y_position": 10.0,
+    "point_light_brightness": 5.0,
     "point_light_constant_fade": 1.0,
-    "point_light_linear_fade": 0.05,
-    "point_light_quadratic_fade": 0.01
+    "point_light_linear_fade": 0.02,
+    "point_light_quadratic_fade": 0.001
   },
   "road": {
     "width_m": 12.0,

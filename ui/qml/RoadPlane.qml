@@ -25,10 +25,12 @@ Node {
     readonly property real scaledCenterLineWidth: centerLineWidth * scaleFactor
 
     // Road surface
+    // Road starts from car position and extends forward (negative Z direction)
+    // Center of road is at -scaledLength/2 so it goes from Z=0 to Z=-scaledLength
     Model {
         id: plane
         source: "#Cube"
-        position: Qt.vector3d(0, planeY, 0)
+        position: Qt.vector3d(0, planeY, -scaledLength / 2)
         scale: Qt.vector3d(scaledWidth, thicknessMeters, scaledLength)
 
         materials: PrincipledMaterial {
@@ -43,7 +45,7 @@ Node {
     // Left edge line
     Model {
         source: "#Cube"
-        position: Qt.vector3d(-scaledWidth / 2 + scaledEdgeLineWidth / 2, lineY, 0)
+        position: Qt.vector3d(-scaledWidth / 2 + scaledEdgeLineWidth / 2, lineY, -scaledLength / 2)
         scale: Qt.vector3d(scaledEdgeLineWidth, thicknessMeters * 2, scaledLength)
         materials: PrincipledMaterial {
             baseColor: "#d0d0d0"
@@ -56,7 +58,7 @@ Node {
     // Right edge line
     Model {
         source: "#Cube"
-        position: Qt.vector3d(scaledWidth / 2 - scaledEdgeLineWidth / 2, lineY, 0)
+        position: Qt.vector3d(scaledWidth / 2 - scaledEdgeLineWidth / 2, lineY, -scaledLength / 2)
         scale: Qt.vector3d(scaledEdgeLineWidth, thicknessMeters * 2, scaledLength)
         materials: PrincipledMaterial {
             baseColor: "#d0d0d0"
@@ -67,6 +69,7 @@ Node {
     }
 
     // Center dashed line
+    // Dashes go from Z=0 to Z=-scaledLength (forward from car)
     Repeater3D {
         model: dashCount
 
@@ -76,7 +79,8 @@ Node {
             readonly property real dashSpacing: root.scaledLength / root.dashCount
             readonly property real dashLength: dashSpacing * sceneConfig.dashLengthRatio
 
-            position: Qt.vector3d(0, lineY, -root.scaledLength / 2 + (index + 0.5) * dashSpacing)
+            // Start from Z=0 (car position) and go forward (negative Z)
+            position: Qt.vector3d(0, lineY, -(index + 0.5) * dashSpacing)
             scale: Qt.vector3d(root.scaledCenterLineWidth, root.thicknessMeters * 2, dashLength)
 
             materials: PrincipledMaterial {
