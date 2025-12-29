@@ -132,7 +132,7 @@ struct UIConfig {
 
 struct ProtocolConfig {
     // Protocol constants
-    static constexpr uint8_t PROTOCOL_VERSION = 0x01;
+    static constexpr uint8_t PROTOCOL_VERSION = 0x02;
     static constexpr uint8_t SYNC_BYTE = 0xAA;
     static constexpr size_t MAX_PAYLOAD_LENGTH = 1024;
     static constexpr size_t HEADER_SIZE = 9;  // 1 + 1 + 1 + 4 + 2

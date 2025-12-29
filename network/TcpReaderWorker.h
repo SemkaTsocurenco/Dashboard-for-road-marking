@@ -21,6 +21,10 @@ namespace network {
         void connected();
         void disconnected();
         void errorOccurred(const QString& message);
+        // V2 Protocol signals
+        void laneLinesParsed(const laneproto::LaneLines& msg);
+        void roadObjectsParsed(const laneproto::RoadObjects& msg);
+        // Legacy V1 signals (kept for compatibility)
         void laneSummaryParsed (const laneproto::LaneSummary& msg);
         void markingObjectsParsed(const laneproto::MarkingObjects& msg);
         void laneDetailsParsed(const laneproto::LaneDetails& msg);
@@ -48,6 +52,11 @@ namespace network {
             explicit MessageHandler (TcpReaderWorker& owner) noexcept
                 : owner_(owner){};
 
+            // V2 Protocol handlers
+            void onLaneLines(const laneproto::LaneLines& msg) override;
+            void onRoadObjects(const laneproto::RoadObjects& msg) override;
+
+            // Legacy V1 handlers (kept for interface compatibility)
             void onLaneSummary (const laneproto::LaneSummary& msg) override;
             void onMarkingObjects(const laneproto::MarkingObjects& msg) override;
             void onLaneDetails(const laneproto::LaneDetails& msg) override;

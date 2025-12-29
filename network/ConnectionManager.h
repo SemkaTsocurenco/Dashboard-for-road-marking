@@ -87,6 +87,9 @@ namespace network {
         void markingModelUpdated();
         void fittedLinesModelUpdated();
         void warningModelUpdated();
+        // V2 Protocol signals
+        void laneLinesReceived(const laneproto::LaneLines& lines);
+        void roadObjectsReceived(const laneproto::RoadObjects& objects);
 
 
     private:
@@ -101,6 +104,11 @@ namespace network {
         void attemptReconnect();
         void resetReconnectState();
 
+        // V2 Protocol receivers
+        void laneLinesReceivedSlot(const laneproto::LaneLines& lines);
+        void roadObjectsReceivedSlot(const laneproto::RoadObjects& objects);
+
+        // Legacy V1 receivers (not used with V2 protocol)
         void laneSummaryReceived(const laneproto::LaneSummary& summary);
         void markingObjectsReceived(const laneproto::MarkingObjects& objects);
         void laneDetailsReceived(const laneproto::LaneDetails& details);

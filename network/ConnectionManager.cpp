@@ -155,6 +155,13 @@ namespace network {
             setState(State::Error);
             scheduleReconnect();
         });
+        // V2 Protocol signal connections
+        connect(worker_, &TcpReaderWorker::laneLinesParsed,
+                this, &ConnectionManager::laneLinesReceivedSlot);
+        connect(worker_, &TcpReaderWorker::roadObjectsParsed,
+                this, &ConnectionManager::roadObjectsReceivedSlot);
+
+        // Legacy V1 signal connections (not used with V2 protocol)
         connect(worker_, &TcpReaderWorker::laneSummaryParsed,
                 this, &ConnectionManager::laneSummaryReceived);
         connect(worker_, &TcpReaderWorker::markingObjectsParsed,
@@ -372,6 +379,37 @@ namespace network {
         LOG_DEBUG << "FittedLinesModel updated: " << fitted_lines_model_;
 
         emit fittedLinesModelUpdated();
+    }
+
+    // V2 Protocol slot implementations
+    void ConnectionManager::laneLinesReceivedSlot(const laneproto::LaneLines& lines) {
+        LOG_DEBUG << "LaneLines (V2) received: lines=" << lines.lines.size()
+                  << ", timestamp=" << lines.timestamp_ms;
+
+        // Re-emit for external consumers
+        emit laneLinesReceived(lines);
+
+        // Update fitted lines model from V2 data
+        fitted_lines_model_.updateFromProtoV2(lines);
+        emit fittedLinesModelUpdated();
+    }
+
+    void ConnectionManager::roadObjectsReceivedSlot(const laneproto::RoadObjects& objects) {
+        LOG_DEBUG << "RoadObjects (V2) received: objects=" << objects.objects.size()
+                  << ", timestamp=" << objects.timestamp_ms;
+
+        // Re-emit for external consumers
+        emit roadObjectsReceived(objects);
+
+        // Update marking model from V2 data
+        marking_model_.updateFromProtoV2(objects);
+        marking_list_model_->updateFromDomain(marking_model_);
+        emit markingModelUpdated();
+
+        if (lane_state_.isValid()) {
+            const std::uint64_t timestamp_ms = objects.timestamp_ms;
+            updateWarnings(timestamp_ms);
+        }
     }
 
 }

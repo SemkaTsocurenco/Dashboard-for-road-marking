@@ -112,6 +112,21 @@ namespace viewmodels {
             case LineStyleRole:
                 return lineStyleToString(obj.lineStyle());
 
+            case CenterXPixelsRole:
+                return obj.centerXPixels();
+
+            case CenterYPixelsRole:
+                return obj.centerYPixels();
+
+            case WidthPixelsRole:
+                return obj.widthPixels();
+
+            case LengthPixelsRole:
+                return obj.lengthPixels();
+
+            case HasPixelCoordsRole:
+                return obj.hasPixelCoords();
+
             default:
                 return {};
         }
@@ -133,7 +148,12 @@ namespace viewmodels {
             {AreaRole, "area"},
             {DistanceRole, "distance"},
             {LineColorRole, "lineColor"},
-            {LineStyleRole, "lineStyle"}
+            {LineStyleRole, "lineStyle"},
+            {CenterXPixelsRole, "centerXPixels"},
+            {CenterYPixelsRole, "centerYPixels"},
+            {WidthPixelsRole, "widthPixels"},
+            {LengthPixelsRole, "lengthPixels"},
+            {HasPixelCoordsRole, "hasPixelCoords"}
         };
     }
 

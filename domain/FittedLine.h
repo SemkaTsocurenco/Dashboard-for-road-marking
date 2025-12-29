@@ -3,6 +3,7 @@
 #include "proto_parser.h"
 #include "AppConfig.hpp"
 #include <vector>
+#include <array>
 #include <ostream>
 
 namespace domain {
@@ -13,6 +14,7 @@ namespace domain {
         ~FittedLine() = default;
 
         void updateFromProto(const laneproto::FittedLine& msg) noexcept;
+        void updateFromProtoV2(const laneproto::LaneLine& line) noexcept;
 
         [[nodiscard]] laneproto::MarkingClassId classId() const noexcept;
         [[nodiscard]] laneproto::LineSide side() const noexcept;
@@ -40,6 +42,12 @@ namespace domain {
         [[nodiscard]] float getMiddleDistance() const noexcept;
         [[nodiscard]] float getEndDistance() const noexcept;
 
+        // V2 accessors for points in meters and pixels
+        [[nodiscard]] float centerXMeters() const noexcept { return center_x_m_; }
+        [[nodiscard]] float centerYMeters() const noexcept { return center_y_m_; }
+        [[nodiscard]] const std::array<laneproto::PointMeters, 3>& pointsMeters() const noexcept { return points_m_; }
+        [[nodiscard]] const std::array<laneproto::PointPixels, 3>& pointsPixels() const noexcept { return points_px_; }
+
     private:
         laneproto::MarkingClassId class_id_ = laneproto::MarkingClassId::Unknown;
         laneproto::LineSide side_ = laneproto::LineSide::Unknown;
@@ -52,6 +60,12 @@ namespace domain {
         std::int16_t y_end_ = 0;
         std::uint8_t confidence_ = 0;
         std::uint8_t quality_ = 0;
+
+        // V2 fields
+        float center_x_m_ = 0.0f;
+        float center_y_m_ = 0.0f;
+        std::array<laneproto::PointMeters, 3> points_m_{};
+        std::array<laneproto::PointPixels, 3> points_px_{};
     };
 
     std::ostream& operator<<(std::ostream& os, const FittedLine& line);
@@ -62,6 +76,7 @@ namespace domain {
         ~FittedLinesModel() = default;
 
         void updateFromProto(const laneproto::FittedLines& msg);
+        void updateFromProtoV2(const laneproto::LaneLines& msg);
 
         [[nodiscard]] std::size_t size() const noexcept;
         [[nodiscard]] bool empty() const noexcept;

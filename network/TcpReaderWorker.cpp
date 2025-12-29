@@ -167,6 +167,22 @@ namespace network {
         parser_.feed(raw, size);
     }
 
+    // V2 Protocol handlers
+    void TcpReaderWorker::MessageHandler::onLaneLines(const laneproto::LaneLines& msg) {
+        LOG_DEBUG << "LaneLines (V2) received: seq=" << static_cast<int>(msg.seq)
+                  << ", timestamp=" << msg.timestamp_ms
+                  << ", lines=" << msg.lines.size();
+        emit owner_.laneLinesParsed(msg);
+    }
+
+    void TcpReaderWorker::MessageHandler::onRoadObjects(const laneproto::RoadObjects& msg) {
+        LOG_DEBUG << "RoadObjects (V2) received: seq=" << static_cast<int>(msg.seq)
+                  << ", timestamp=" << msg.timestamp_ms
+                  << ", objects=" << msg.objects.size();
+        emit owner_.roadObjectsParsed(msg);
+    }
+
+    // Legacy V1 handlers (kept for interface compatibility)
     void TcpReaderWorker::MessageHandler::onLaneSummary(const laneproto::LaneSummary& msg){
         LOG_DEBUG << "LaneSummary received: seq=" << static_cast<int>(msg.seq)
                   << ", timestamp=" << msg.timestamp_ms

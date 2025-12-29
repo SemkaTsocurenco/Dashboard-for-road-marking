@@ -5,6 +5,8 @@
 #include <QBrush>
 #include <QVariant>
 #include <QPointF>
+#include <QLineF>
+#include <QPolygonF>
 #include <QPainterPath>
 #include <cmath>
 
@@ -325,6 +327,7 @@ void MarkingOverlayProcessor::drawMarkingObjects(QPainter& painter, const QSize&
     for (int i = 0; i < count; ++i) {
         QModelIndex index = m_markingObjectListModel->index(i, 0);
 
+        const int classId = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::ClassIdRole).toInt();
         const float x = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::XMetersRole).toFloat();
         const float y = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::YMetersRole).toFloat();
         const float length = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::LengthMetersRole).toFloat();
@@ -337,14 +340,22 @@ void MarkingOverlayProcessor::drawMarkingObjects(QPainter& painter, const QSize&
         const QString lineColorStr = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::LineColorRole).toString();
         const QString lineStyleStr = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::LineStyleRole).toString();
 
+        // Get pixel coordinates (V2 protocol)
+        const bool hasPixelCoords = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::HasPixelCoordsRole).toBool();
+        const float centerXPx = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::CenterXPixelsRole).toFloat();
+        const float centerYPx = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::CenterYPixelsRole).toFloat();
+        const float widthPx = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::WidthPixelsRole).toFloat();
+        const float lengthPx = m_markingObjectListModel->data(index, viewmodels::MarkingObjectListModel::LengthPixelsRole).toFloat();
+
         QColor color = objectColorFromStrings(lineColorStr, lineStyleStr, isCrosswalk, isArrow);
 
         // Calculate distance from vehicle (x, y already in meters)
         const float distance = std::sqrt(x * x + y * y);
 
         // Draw object with contour and size information
-        drawMarkingObjectWithContour(painter, imageSize, x, y, length, width, yaw,
-                                     className, color, isCrosswalk, isArrow, distance);
+        drawMarkingObjectWithContour(painter, imageSize, classId, x, y, length, width, yaw,
+                                     className, color, isCrosswalk, isArrow, distance,
+                                     hasPixelCoords, centerXPx, centerYPx, widthPx, lengthPx);
     }
 }
 
@@ -557,8 +568,11 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
 
         LOG_DEBUG << "Using penWidth=" << penWidth << ", penStyle=" << static_cast<int>(penStyle);
 
-        // First draw black outline for visibility
-        QPen outlinePen(Qt::black, penWidth + 2, penStyle);
+        // Disable brush to prevent filling the path interior
+        painter.setBrush(Qt::NoBrush);
+
+        // First draw black outline for visibility (always solid regardless of line style)
+        QPen outlinePen(Qt::black, penWidth + 2, Qt::SolidLine);
         outlinePen.setCapStyle(Qt::RoundCap);
         outlinePen.setJoinStyle(Qt::RoundJoin);
         painter.setPen(outlinePen);
@@ -576,39 +590,49 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
 
         painter.drawPath(linePath);
 
-        // Draw distance labels at key points (start, middle, end)
-        const float startDist = line.getStartDistance();
-        const float middleDist = line.getMiddleDistance();
-        const float endDist = line.getEndDistance();
+        // Draw compact coordinate labels at start and end points using V2 data
+        const auto& pointsM = line.pointsMeters();
+        const auto& pointsPx = line.pointsPixels();
 
-        painter.setFont(QFont("Arial", 9, QFont::Bold));
-        painter.setPen(Qt::white);
+        painter.setFont(QFont("Arial", 8));
 
-        auto drawDistanceLabel = [&](const QPointF& pos, float distance) {
-            QString label = QString("%1m").arg(distance, 0, 'f', 1);
+        auto drawCompactCoordLabel = [&](const QPointF& pos, float xMeters, float yMeters, const QColor& lineColor) {
+            // Draw small point marker
+            const float pointRadius = 3.0f;
+            painter.setPen(QPen(Qt::black, 1));
+            painter.setBrush(lineColor);
+            painter.drawEllipse(pos, pointRadius, pointRadius);
+
+            // Label offset
+            const float labelOffsetX = 8.0f;
+            const float labelOffsetY = -6.0f;
+            QPointF labelPos(pos.x() + labelOffsetX, pos.y() + labelOffsetY);
+
+            // Readable label text with clear x/y separation
+            QString label = QString("x:%1 y:%2").arg(xMeters, 0, 'f', 1).arg(yMeters, 0, 'f', 1);
             QFontMetrics fm(painter.font());
             QRect textRect = fm.boundingRect(label);
-            textRect.moveCenter(QPoint(pos.x(), pos.y()));
-            textRect.adjust(-3, -1, 3, 1);
+            textRect.moveTopLeft(QPoint(labelPos.x(), labelPos.y() - textRect.height() / 2));
+            textRect.adjust(-4, -2, 4, 2);
 
-            painter.fillRect(textRect, QColor(0, 0, 0, 180));
+            // Draw label background with colored border
+            painter.setPen(QPen(lineColor, 1.5));
+            painter.setBrush(QColor(0, 0, 0, 180));
+            painter.drawRoundedRect(textRect, 3, 3);
+
+            // Draw label text
+            painter.setPen(Qt::white);
             painter.drawText(textRect, Qt::AlignCenter, label);
         };
 
-        if (!screenPoints.empty()) {
-            // Start point
-            drawDistanceLabel(screenPoints.first(), startDist);
-
-            // Middle point
-            if (screenPoints.size() > 1) {
-                int midIdx = screenPoints.size() / 2;
-                drawDistanceLabel(screenPoints[midIdx], middleDist);
-            }
-
-            // End point
-            if (screenPoints.size() > 1) {
-                drawDistanceLabel(screenPoints.last(), endDist);
-            }
+        // Draw labels only at start and end points (skip middle to reduce clutter)
+        if (pointsPx[0].x_px > 0 || pointsPx[0].y_px > 0) {
+            drawCompactCoordLabel(QPointF(pointsPx[0].x_px, pointsPx[0].y_px),
+                                  pointsM[0].x_m, pointsM[0].y_m, color);
+        }
+        if (pointsPx[2].x_px > 0 || pointsPx[2].y_px > 0) {
+            drawCompactCoordLabel(QPointF(pointsPx[2].x_px, pointsPx[2].y_px),
+                                  pointsM[2].x_m, pointsM[2].y_m, color);
         }
 
         LOG_DEBUG << "Line drawing completed successfully";
@@ -616,16 +640,31 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
 }
 
 void MarkingOverlayProcessor::drawMarkingObjectWithContour(QPainter& painter, const QSize& imageSize,
+                                                            int classId,
                                                             float x, float y, float length, float width,
                                                             float yaw, const QString& className,
                                                             const QColor& color, bool isCrosswalk, bool isArrow,
-                                                            float distance)
+                                                            float distance,
+                                                            bool hasPixelCoords,
+                                                            float centerXPx, float centerYPx,
+                                                            float widthPxParam, float lengthPxParam)
 {
-    QPointF center = worldToImage(x, y, imageSize);
+    QPointF center;
+    float lengthPx;
+    float widthPx;
 
-    // GeometryMapper scales bbox height to image height and width to image width.
-    const float lengthPx = (length / 10.0f) * static_cast<float>(imageSize.height());
-    const float widthPx = (width / 10.0f) * static_cast<float>(imageSize.width());
+    if (hasPixelCoords && widthPxParam > 0.0f && lengthPxParam > 0.0f) {
+        // Use direct pixel coordinates from detector (V2 protocol)
+        center = QPointF(centerXPx, centerYPx);
+        lengthPx = lengthPxParam;
+        widthPx = widthPxParam;
+    } else {
+        // Fallback: convert from meters using legacy worldToImage
+        center = worldToImage(x, y, imageSize);
+        // GeometryMapper scales bbox height to image height and width to image width.
+        lengthPx = (length / 10.0f) * static_cast<float>(imageSize.height());
+        widthPx = (width / 10.0f) * static_cast<float>(imageSize.width());
+    }
 
     painter.save();
     painter.translate(center);
@@ -658,52 +697,199 @@ void MarkingOverlayProcessor::drawMarkingObjectWithContour(QPainter& painter, co
         painter.drawRect(rect);
 
     } else if (isArrow) {
-        // Стрелка - рисуем упрощенную форму стрелки
-        painter.setPen(QPen(color, 3, Qt::SolidLine));
-        QColor fillColor = color;
-        fillColor.setAlpha(overlay_cfg.shape_alpha_high);
-        painter.setBrush(QBrush(fillColor));
-
-        // Тело стрелки
-        float shaftWidth = widthPx * 0.4f;
-        float shaftLength = lengthPx * 0.6f;
-        QRectF shaft(-shaftWidth/2, -lengthPx/2, shaftWidth, shaftLength);
-        painter.drawRect(shaft);
-
-        // Голова стрелки (треугольник)
-        QPolygonF arrowHead;
-        float headY = -lengthPx/2 + shaftLength;
-        arrowHead << QPointF(0, lengthPx/2)  // Вершина
-                  << QPointF(-widthPx/2, headY)  // Левый угол
-                  << QPointF(widthPx/2, headY);  // Правый угол
-        painter.drawPolygon(arrowHead);
+        // For arrows, don't apply yaw rotation here - the arrow type (left/right/straight)
+        // already encodes the direction. Just draw at center position.
+        // Restore transform first, then draw arrow separately
+        painter.restore();
+        painter.save();
+        painter.translate(center);
+        // Draw arrow shape matching detector style (with black outline)
+        // Use smaller scale - detector uses fixed template that fits in bbox
+        drawArrowShape(painter, classId, widthPx * 0.6f, lengthPx * 0.6f, color);
 
     } else {
-        // // Обычный объект - прямоугольник
-        // painter.setPen(QPen(color, 2, Qt::SolidLine));
-        // QColor fillColor = color;
-        // fillColor.setAlpha(overlay_cfg.shape_alpha_low - 20);  // 80 when default is 100
-        // painter.setBrush(QBrush(fillColor));
-        // painter.drawRect(rect);
-
-        // // Толстый контур
-        // painter.setPen(QPen(color, 3, Qt::SolidLine));
-        // painter.setBrush(Qt::NoBrush);
-        // painter.drawRect(rect);
+        // Other objects - skip drawing (box_junction, stop_line, etc.)
     }
 
     painter.restore();
 
-    // Draw distance label
-    painter.setPen(Qt::white);
-    painter.setFont(QFont("Arial", 9, QFont::Bold));
+    // Draw coordinate label with small point marker
+    painter.setFont(QFont("Arial", 8));
 
-    QString distLabel = QString("%1m").arg(distance, 0, 'f', 1);
+    // Draw small point marker at object center
+    const float pointRadius = 3.5f;
+    painter.setPen(QPen(Qt::black, 1));
+    painter.setBrush(color);
+    painter.drawEllipse(center, pointRadius, pointRadius);
+
+    // Label offset (to the upper right)
+    const float labelOffsetX = 10.0f;
+    const float labelOffsetY = -lengthPx / 2.0f - 10.0f;
+    QPointF labelAnchor(center.x() + labelOffsetX, center.y() + labelOffsetY);
+
+    // Readable label text with clear x/y separation
+    QString coordLabel = QString("x:%1 y:%2").arg(x, 0, 'f', 1).arg(y, 0, 'f', 1);
     QFontMetrics fm(painter.font());
-    QRect textRect = fm.boundingRect(distLabel);
-    textRect.moveCenter(QPoint(center.x(), center.y() - lengthPx / 2.0f - 15));
-    textRect.adjust(-3, -1, 3, 1);
+    QRect textRect = fm.boundingRect(coordLabel);
+    textRect.moveTopLeft(QPoint(labelAnchor.x(), labelAnchor.y() - textRect.height() / 2));
+    textRect.adjust(-4, -2, 4, 2);
 
-    painter.fillRect(textRect, QColor(0, 0, 0, 180));
-    painter.drawText(textRect, Qt::AlignCenter, distLabel);
+    // Draw label background with colored border
+    painter.setPen(QPen(color, 1.5));
+    painter.setBrush(QColor(0, 0, 0, 180));
+    painter.drawRoundedRect(textRect, 3, 3);
+
+    // Draw label text
+    painter.setPen(Qt::white);
+    painter.drawText(textRect, Qt::AlignCenter, coordLabel);
+}
+
+void MarkingOverlayProcessor::drawArrowShape(QPainter& painter, int classId, float widthPx, float lengthPx,
+                                              const QColor& color)
+{
+    // Arrow class IDs: 11=left, 12=straight, 13=right, 14=left_straight, 15=right_straight
+    // Drawing is done in local coordinates (already translated and rotated)
+    // Origin is at center, Y axis points down in Qt
+
+    const float outlineWidth = 3.0f;
+    const float arrowWidth = 2.0f;
+    const QColor outlineColor = Qt::black;
+
+    // Scale factors based on bounding box
+    const float halfW = widthPx / 2.0f;
+    const float halfL = lengthPx / 2.0f;
+
+    // Tip size proportional to width
+    const float tipSize = widthPx * 0.25f;
+    const float shaftWidth = widthPx * 0.15f;
+
+    auto drawStraightArrow = [&](float offsetX = 0.0f, float offsetY = 0.0f, float scale = 1.0f) {
+        // Vertical arrow pointing up (in road direction)
+        const float tipY = -halfL * scale + offsetY;
+        const float tailY = halfL * scale + offsetY;
+        const float cx = offsetX;
+
+        // Shaft
+        QLineF shaft(cx, tailY, cx, tipY + tipSize * scale);
+
+        // Arrow head triangle
+        QPolygonF head;
+        head << QPointF(cx, tipY)
+             << QPointF(cx - tipSize * scale, tipY + tipSize * scale)
+             << QPointF(cx + tipSize * scale, tipY + tipSize * scale);
+
+        // Draw outline first
+        painter.setPen(QPen(outlineColor, shaftWidth * scale + outlineWidth, Qt::SolidLine, Qt::RoundCap));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawLine(shaft);
+
+        painter.setPen(QPen(outlineColor, outlineWidth));
+        painter.setBrush(outlineColor);
+        painter.drawPolygon(head);
+
+        // Draw colored arrow on top
+        painter.setPen(QPen(color, shaftWidth * scale, Qt::SolidLine, Qt::RoundCap));
+        painter.drawLine(shaft);
+
+        painter.setPen(QPen(color, arrowWidth));
+        painter.setBrush(color);
+        painter.drawPolygon(head);
+    };
+
+    auto drawLeftArrow = [&](float offsetX = 0.0f, float offsetY = 0.0f, float scale = 1.0f) {
+        // Horizontal arrow pointing left
+        const float tipX = -halfW * scale + offsetX;
+        const float tailX = halfW * scale * 0.5f + offsetX;
+        const float cy = offsetY;
+
+        // Shaft
+        QLineF shaft(tailX, cy, tipX + tipSize * scale, cy);
+
+        // Arrow head triangle
+        QPolygonF head;
+        head << QPointF(tipX, cy)
+             << QPointF(tipX + tipSize * scale, cy - tipSize * scale)
+             << QPointF(tipX + tipSize * scale, cy + tipSize * scale);
+
+        // Draw outline first
+        painter.setPen(QPen(outlineColor, shaftWidth * scale + outlineWidth, Qt::SolidLine, Qt::RoundCap));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawLine(shaft);
+
+        painter.setPen(QPen(outlineColor, outlineWidth));
+        painter.setBrush(outlineColor);
+        painter.drawPolygon(head);
+
+        // Draw colored arrow on top
+        painter.setPen(QPen(color, shaftWidth * scale, Qt::SolidLine, Qt::RoundCap));
+        painter.drawLine(shaft);
+
+        painter.setPen(QPen(color, arrowWidth));
+        painter.setBrush(color);
+        painter.drawPolygon(head);
+    };
+
+    auto drawRightArrow = [&](float offsetX = 0.0f, float offsetY = 0.0f, float scale = 1.0f) {
+        // Horizontal arrow pointing right
+        const float tipX = halfW * scale + offsetX;
+        const float tailX = -halfW * scale * 0.5f + offsetX;
+        const float cy = offsetY;
+
+        // Shaft
+        QLineF shaft(tailX, cy, tipX - tipSize * scale, cy);
+
+        // Arrow head triangle
+        QPolygonF head;
+        head << QPointF(tipX, cy)
+             << QPointF(tipX - tipSize * scale, cy - tipSize * scale)
+             << QPointF(tipX - tipSize * scale, cy + tipSize * scale);
+
+        // Draw outline first
+        painter.setPen(QPen(outlineColor, shaftWidth * scale + outlineWidth, Qt::SolidLine, Qt::RoundCap));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawLine(shaft);
+
+        painter.setPen(QPen(outlineColor, outlineWidth));
+        painter.setBrush(outlineColor);
+        painter.drawPolygon(head);
+
+        // Draw colored arrow on top
+        painter.setPen(QPen(color, shaftWidth * scale, Qt::SolidLine, Qt::RoundCap));
+        painter.drawLine(shaft);
+
+        painter.setPen(QPen(color, arrowWidth));
+        painter.setBrush(color);
+        painter.drawPolygon(head);
+    };
+
+    switch (classId) {
+        case 11:  // ArrowLeft
+            drawLeftArrow();
+            break;
+
+        case 12:  // ArrowStraight
+            drawStraightArrow();
+            break;
+
+        case 13:  // ArrowRight
+            drawRightArrow();
+            break;
+
+        case 14:  // ArrowLeftStraight
+            // Combined: straight arrow offset right, left arrow offset up
+            drawStraightArrow(halfW * 0.3f, 0.0f, 0.8f);
+            drawLeftArrow(0.0f, -halfL * 0.2f, 0.7f);
+            break;
+
+        case 15:  // ArrowRightStraight
+            // Combined: straight arrow offset left, right arrow offset up
+            drawStraightArrow(-halfW * 0.3f, 0.0f, 0.8f);
+            drawRightArrow(0.0f, -halfL * 0.2f, 0.7f);
+            break;
+
+        default:
+            // Unknown arrow type - draw straight arrow as fallback
+            drawStraightArrow();
+            break;
+    }
 }
