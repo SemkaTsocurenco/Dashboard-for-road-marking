@@ -10,5 +10,7 @@
         <file alias="CenterOffsetIndicator.qml">../ui/qml/CenterOffsetIndicator.qml</file>
         <file alias="ConnectionStatus.qml">../ui/qml/ConnectionStatus.qml</file>
         <file alias="CameraController.qml">../ui/qml/CameraController.qml</file>
+        <file alias="LanePoint.qml">../ui/qml/LanePoint.qml</file>
+        <file alias="PolyLine3D.qml">../ui/qml/PolyLine3D.qml</file>
   </qresource>
 </RCC>

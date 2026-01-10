@@ -65,6 +65,7 @@ void DashboardWidget::setAppController(app::AppController* controller) {
     context->setContextProperty("laneViewModel", controller->laneViewModel());
     context->setContextProperty("markingModel", controller->markingListModel());
     context->setContextProperty("warningModel", controller->warningListModel());
+    context->setContextProperty("fittedLinesModel", controller->fittedLineListModel());
 
     // Load scene configuration from file
     config::SceneConfig sceneConfig = config::SceneConfig::loadFromFile("config/scene_config.json");

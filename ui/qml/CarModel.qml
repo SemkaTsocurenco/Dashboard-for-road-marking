@@ -8,7 +8,7 @@ Node {
     // Real car dimensions in meters
     readonly property real carWidthM: 1.8
     readonly property real carLengthM: 4.5
-    readonly property real carHeightM: 1.5
+    readonly property real carHeightM: 0.7
 
     // Apply scale_factor
     readonly property real scaleFactor: sceneConfig.scaleFactor

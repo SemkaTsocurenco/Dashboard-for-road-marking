@@ -1,4 +1,5 @@
 #include "ConnectionManager.h"
+#include "FittedLineListModel.h"
 #include "LoggerMacros.hpp"
 #include "proto_parser.h"
 #include "AppConfig.hpp"
@@ -55,6 +56,7 @@ namespace network {
         , lane_view_model_(new viewmodels::LaneStateViewModel(this))
         , marking_list_model_(new viewmodels::MarkingObjectListModel(this))
         , warning_list_model_(new viewmodels::WarningListModel(this))
+        , fitted_line_list_model_(new viewmodels::FittedLineListModel(this))
     {
         reconnect_timer_->setSingleShot(true);
         connect(reconnect_timer_, &QTimer::timeout, this, &ConnectionManager::attemptReconnect);
@@ -420,6 +422,9 @@ namespace network {
         fitted_lines_model_.updateFromProto(lines);
         LOG_DEBUG << "FittedLinesModel updated: " << fitted_lines_model_;
 
+        // Update ViewModel for QML
+        fitted_line_list_model_->updateFromDomain(fitted_lines_model_);
+
         emit fittedLinesModelUpdated();
     }
 
@@ -433,6 +438,8 @@ namespace network {
 
         // Update fitted lines model from V2 data
         fitted_lines_model_.updateFromProtoV2(lines);
+        // Update ViewModel for QML
+        fitted_line_list_model_->updateFromDomain(fitted_lines_model_);
         emit fittedLinesModelUpdated();
 
         if (lines.lines.empty()) {

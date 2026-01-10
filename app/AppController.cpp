@@ -1,5 +1,6 @@
 #include "AppController.hpp"
 #include "ConfigurationManager.hpp"
+#include "FittedLineListModel.h"
 #include "LoggerMacros.hpp"
 #include <QUrl>
 
@@ -260,6 +261,11 @@ viewmodels::MarkingObjectListModel* AppController::markingListModel() const
 viewmodels::WarningListModel* AppController::warningListModel() const
 {
     return connection_manager_ ? connection_manager_->warningListModel() : nullptr;
+}
+
+viewmodels::FittedLineListModel* AppController::fittedLineListModel() const
+{
+    return connection_manager_ ? connection_manager_->fittedLineListModel() : nullptr;
 }
 
 void AppController::onLaneStateUpdated()

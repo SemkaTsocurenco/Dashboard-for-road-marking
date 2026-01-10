@@ -22,6 +22,8 @@ class AppController : public QObject {
                READ markingListModel CONSTANT)
     Q_PROPERTY(viewmodels::WarningListModel* warningListModel
                READ warningListModel CONSTANT)
+    Q_PROPERTY(viewmodels::FittedLineListModel* fittedLineListModel
+               READ fittedLineListModel CONSTANT)
 
     //  Global connection state 
     Q_PROPERTY(bool isFullyConnected READ isFullyConnected
@@ -61,6 +63,7 @@ public:
     viewmodels::LaneStateViewModel* laneViewModel() const;
     viewmodels::MarkingObjectListModel* markingListModel() const;
     viewmodels::WarningListModel* warningListModel() const;
+    viewmodels::FittedLineListModel* fittedLineListModel() const;
 
     bool isFullyConnected() const { return is_fully_connected_; }
     bool isDataConnected() const { return is_data_connected_; }
