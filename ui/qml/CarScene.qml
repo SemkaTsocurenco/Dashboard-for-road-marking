@@ -14,8 +14,8 @@ Node {
     PerspectiveCamera {
         id: camera
         position: Qt.vector3d(0, cameraHeight, cameraDistance) // look toward -Z
-        eulerRotation: Qt.vector3d(sceneConfig.cameraPitchAngle, 0, 0) // tilt downward toward the road
-        fieldOfView: 75
+        eulerRotation: Qt.vector3d(sceneConfig.cameraPitchAngle, 180, 0) // tilt downward toward the road
+        fieldOfView: 60
         clipNear: sceneConfig.cameraClipNear
         clipFar: sceneConfig.cameraClipFar
     }
@@ -57,38 +57,40 @@ Node {
     }
 
     CarModel {
-        // Lift slightly above the plane so it is clearly visible
-        // carYElevation is in meters, multiply by scaleFactor
-        position: Qt.vector3d(0, sceneConfig.carYElevation * sceneConfig.scaleFactor, 0)
+        position: Qt.vector3d(0, 0, 0)
     }
 
 
-    Repeater3D {
-        id: markingRepeater
-        model: markingModel
+    // Repeater3D {
+    //     id: markingRepeater
+    //     model: markingModel
 
-        onModelChanged: {
-        }
+    //     onModelChanged: {
+    //     }
 
-        delegate: MarkingLine {}
-    }
+    //     delegate: MarkingLine {}
+    // }
 
     // Visualize lane boundary points (if provided) as small markers
     Repeater3D {
         id: leftPointsRepeater
-        model: (typeof laneViewModel !== 'undefined' && laneViewModel && laneViewModel.leftPoints) ? laneViewModel.leftPoints : []
+        model:  laneViewModel.leftPoints
 
         Model {
-            required property var modelData
+            required property point modelData
             source: "#Sphere"
-            readonly property real scaledMarkerSize: sceneConfig.markerScale * sceneConfig.scaleFactor
-            scale: Qt.vector3d(scaledMarkerSize, scaledMarkerSize, scaledMarkerSize)
+            scale: Qt.vector3d(1,1,1)
+            Component.onCompleted: console.log("Left marker scale:", sceneConfig.markerScale)
             // Invert Y to match camera view direction and apply scale_factor
             position: Qt.vector3d(
                 modelData.x * sceneConfig.scaleFactor,
-                sceneConfig.markerYPosition * sceneConfig.scaleFactor,
-                -modelData.y * sceneConfig.scaleFactor
+                0,
+                modelData.y * sceneConfig.scaleFactor
             )
+            onPositionChanged: {
+                console.log("Updated position - x:", position.x, "y:", position.y, "z:", position.z)
+            }
+
             materials: PrincipledMaterial {
                 baseColor: "#ffd700"
                 emissiveFactor: Qt.vector3d(0.3, 0.3, 0.0)
@@ -99,24 +101,25 @@ Node {
 
     Repeater3D {
         id: rightPointsRepeater
-        model: (typeof laneViewModel !== 'undefined' && laneViewModel && laneViewModel.rightPoints) ? laneViewModel.rightPoints : []
+        model: laneViewModel.rightPoints 
 
         Model {
             required property var modelData
             source: "#Sphere"
-            readonly property real scaledMarkerSize: sceneConfig.markerScale * sceneConfig.scaleFactor
-            scale: Qt.vector3d(scaledMarkerSize, scaledMarkerSize, scaledMarkerSize)
+            scale: Qt.vector3d(1,1,1)
+            Component.onCompleted: console.log("Left marker scale:", sceneConfig.markerScale)
             // Invert Y to match camera view direction and apply scale_factor
             position: Qt.vector3d(
                 modelData.x * sceneConfig.scaleFactor,
-                sceneConfig.markerYPosition * sceneConfig.scaleFactor,
-                -modelData.y * sceneConfig.scaleFactor
+                0,
+                modelData.y * sceneConfig.scaleFactor
             )
             materials: PrincipledMaterial {
                 baseColor: "#ffffff"
                 emissiveFactor: Qt.vector3d(0.3, 0.3, 0.3)
                 roughness: 0.4
             }
+
         }
     }
 }

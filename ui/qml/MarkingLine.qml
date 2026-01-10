@@ -23,20 +23,18 @@ Model {
     source: "#Cube"
     visible: isValid
 
-    // Keep markings slightly above the plane to avoid z-fighting
-    // Invert Y coordinate to match camera view direction (camera looks toward -Z)
-    // Apply scale_factor to convert meters to scene units
+
     position: Qt.vector3d(
         xMeters * sceneConfig.scaleFactor,
         sceneConfig.markingYPosition,
-        -yMeters * sceneConfig.scaleFactor
+        yMeters * sceneConfig.scaleFactor
     )
 
-    // Apply scale_factor to marking dimensions
+    // Scale uses meters directly (scaleFactor applied in position only)
     scale: Qt.vector3d(
-        Math.max(widthMeters * sceneConfig.scaleFactor, sceneConfig.markingMinWidth),
+        widthMeters, 
         sceneConfig.markingHeight,
-        Math.max(lengthMeters * sceneConfig.scaleFactor, sceneConfig.markingMinLength)
+        lengthMeters
     )
 
     eulerRotation.y: -yawDeg
