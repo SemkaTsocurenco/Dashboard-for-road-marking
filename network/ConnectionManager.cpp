@@ -5,6 +5,48 @@
 #include <qnamespace.h>
 #include <qobjectdefs.h>
 #include <QTimer>
+#include <cmath>
+
+namespace {
+    laneproto::LaneType laneTypeFromStyle(laneproto::LineStyle style) {
+        switch (style) {
+            case laneproto::LineStyle::Solid:
+                return laneproto::LaneType::Solid;
+            case laneproto::LineStyle::Dashed:
+                return laneproto::LaneType::Dashed;
+            case laneproto::LineStyle::Double:
+                return laneproto::LaneType::DoubleSolid;
+            case laneproto::LineStyle::Unknown:
+            default:
+                return laneproto::LaneType::Unknown;
+        }
+    }
+
+    float estimateOffsetFromPoints(const std::array<laneproto::PointMeters, 3>& points) {
+        float best_x = points[0].x_m;
+        float best_y = std::fabs(points[0].y_m);
+        for (const auto& p : points) {
+            const float abs_y = std::fabs(p.y_m);
+            if (abs_y < best_y) {
+                best_y = abs_y;
+                best_x = p.x_m;
+            }
+        }
+        return best_x;
+    }
+
+    void fillBoundaryDetails(laneproto::LaneBoundaryDetails& dst, const laneproto::LaneLine& line) {
+        dst.type = laneTypeFromStyle(line.style);
+        dst.color = line.color;
+        dst.quality = 255;
+        dst.width_m = 0.1f;
+        dst.points_count = static_cast<std::uint8_t>(line.points_m.size());
+        for (std::size_t i = 0; i < line.points_m.size(); ++i) {
+            dst.points[i].x_m = line.points_m[i].x_m;
+            dst.points[i].y_m = line.points_m[i].y_m;
+        }
+    }
+}
 
 namespace network {
     ConnectionManager::ConnectionManager(QObject* parent)
@@ -392,6 +434,64 @@ namespace network {
         // Update fitted lines model from V2 data
         fitted_lines_model_.updateFromProtoV2(lines);
         emit fittedLinesModelUpdated();
+
+        if (lines.lines.empty()) {
+            lane_state_.reset();
+            lane_view_model_->updateFromDomain(lane_state_);
+            emit laneStateUpdated();
+            updateWarnings(lines.timestamp_ms);
+            return;
+        }
+
+        const laneproto::LaneLine* left_line = nullptr;
+        const laneproto::LaneLine* right_line = nullptr;
+        for (const auto& line : lines.lines) {
+            if (line.side == laneproto::LineSide::Left && !left_line) {
+                left_line = &line;
+            } else if (line.side == laneproto::LineSide::Right && !right_line) {
+                right_line = &line;
+            }
+
+            if (left_line && right_line) {
+                break;
+            }
+        }
+
+        laneproto::LaneSummary summary;
+        summary.timestamp_ms = lines.timestamp_ms;
+        summary.seq = lines.seq;
+        summary.lane_type_left = left_line ? laneTypeFromStyle(left_line->style) : laneproto::LaneType::Unknown;
+        summary.lane_type_right = right_line ? laneTypeFromStyle(right_line->style) : laneproto::LaneType::Unknown;
+        summary.allowed_maneuvers = 0xFF;
+        summary.quality = 255;
+        if (left_line && right_line) {
+            summary.left_offset_m = estimateOffsetFromPoints(left_line->points_m);
+            summary.right_offset_m = estimateOffsetFromPoints(right_line->points_m);
+        } else {
+            summary.left_offset_m = 0.0f;
+            summary.right_offset_m = 0.0f;
+        }
+
+        lane_state_.updateFromProto(summary);
+
+        laneproto::LaneDetails details{};
+        details.timestamp_ms = lines.timestamp_ms;
+        details.seq = lines.seq;
+        details.left_offset_m = summary.left_offset_m;
+        details.right_offset_m = summary.right_offset_m;
+        details.allowed_maneuvers = summary.allowed_maneuvers;
+        details.quality = summary.quality;
+        if (left_line) {
+            fillBoundaryDetails(details.left, *left_line);
+        }
+        if (right_line) {
+            fillBoundaryDetails(details.right, *right_line);
+        }
+
+        lane_state_.updateFromProto(details);
+        lane_view_model_->updateFromDomain(lane_state_);
+        emit laneStateUpdated();
+        updateWarnings(lines.timestamp_ms);
     }
 
     void ConnectionManager::roadObjectsReceivedSlot(const laneproto::RoadObjects& objects) {

@@ -1,13 +1,13 @@
 {
   "scale": {
-    "scale_factor": 1
+    "scale_factor": 100
   },
   "camera": {
-    "height": 25.0,
-    "distance": 15.0,
-    "pitch_angle_deg": -45.0,
-    "clip_near": 0.1,
-    "clip_far": 500.0
+    "height": 250.0,
+    "distance": -250.0,
+    "pitch_angle_deg": -20.0,
+    "clip_near": 10.1,
+    "clip_far": 5000.0
   },
   "lighting": {
     "main_light_brightness": 0.8,
