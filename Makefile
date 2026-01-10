@@ -67,7 +67,17 @@ run: build
 	@cp config/default_config.json build/config.json
 	@cp config/scene_config.json build/config/
 	@echo "=== Запуск приложения ==="
-	@cd $(BUILD_DIR) && ./dashboard
+	@cd $(BUILD_DIR) && env -i \
+		HOME="$$HOME" \
+		USER="$$USER" \
+		LOGNAME="$$LOGNAME" \
+		PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+		DISPLAY="$$DISPLAY" \
+		XAUTHORITY="$$XAUTHORITY" \
+		WAYLAND_DISPLAY="$$WAYLAND_DISPLAY" \
+		XDG_RUNTIME_DIR="$$XDG_RUNTIME_DIR" \
+		LANG="$$LANG" \
+		./dashboard
 
 # Установка зависимостей (Qt6, OpenCV)
 install-deps:
