@@ -386,7 +386,7 @@ void MarkingOverlayProcessor::drawWarnings(QPainter& painter, const QSize& image
         QColor bgColor = isCritical ? QColor(220, 0, 0, 180) : QColor(255, 165, 0, 180);
         QColor textColor = Qt::white;
 
-        QString text = QString("%1 (%.1fm)").arg(message).arg(distance);
+        QString text = QString("%1 (%2m)").arg(message).arg(distance, 0, 'f', 1);
         QFontMetrics fm(painter.font());
         QRect textRect = fm.boundingRect(text);
         textRect.adjust(-5, -3, 5, 3);
@@ -494,11 +494,11 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
 
     for (const auto& line : m_fittedLinesModel.lines()) {
 
-        if (!line.isValid()) {
-            LOG_WARN << "Skipping invalid fitted line: y_range=[" << line.yStart() << "," << line.yEnd()
-                     << "], poly=[" << line.polyA() << "," << line.polyB() << "," << line.polyC() << "]";
-            continue;
-        }
+        // if (!line.isValid()) {
+        //     LOG_WARN << "Skipping invalid fitted line: y_range=[" << line.yStart() << "," << line.yEnd()
+        //              << "], poly=[" << line.polyA() << "," << line.polyB() << "," << line.polyC() << "]";
+        //     continue;
+        // }
 
         LOG_DEBUG << "Line: y_range=[" << line.yStart() << "," << line.yEnd()
                   << "], poly=[" << line.polyA() << "," << line.polyB() << "," << line.polyC() << "]"
@@ -506,10 +506,12 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
                   << ", quality=" << static_cast<int>(line.quality());
 
         auto points = line.generatePoints(overlay_cfg.fitted_line_points_count);
-        if (points.empty()) {
-            LOG_WARN << "generatePoints returned empty vector";
-            continue;
-        }
+
+        // REMOVED EMPTY CHECK - try to draw even with empty points
+        // if (points.empty()) {
+        //     LOG_WARN << "generatePoints returned empty vector";
+        //     continue;
+        // }
 
         LOG_DEBUG << "Generated " << points.size() << " points";
 
@@ -521,13 +523,22 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
             screenPoints.push_back(QPointF(x_px, y_px));
         }
 
-        if (screenPoints.size() < 2) {
-            LOG_WARN << "Not enough screen points: " << screenPoints.size();
+        // REMOVED SIZE CHECK - try to draw even with less than 2 points
+        // if (screenPoints.size() < 2) {
+        //     LOG_WARN << "Not enough screen points: " << screenPoints.size();
+        //     continue;
+        // }
+
+        // Minimal safety check to prevent crashes, but still try to draw everything
+        if (screenPoints.isEmpty()) {
+            LOG_DEBUG << "No screen points to draw, skipping";
             continue;
         }
 
         LOG_DEBUG << "First point: (" << screenPoints[0].x() << "," << screenPoints[0].y() << ")";
-        LOG_DEBUG << "Last point: (" << screenPoints.last().x() << "," << screenPoints.last().y() << ")";
+        if (screenPoints.size() > 1) {
+            LOG_DEBUG << "Last point: (" << screenPoints.last().x() << "," << screenPoints.last().y() << ")";
+        }
 
         QColor color = getColorForClassId(line.classId(), line.lineColor());
 

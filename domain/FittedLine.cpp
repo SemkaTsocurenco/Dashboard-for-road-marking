@@ -94,8 +94,9 @@ namespace domain {
     }
 
     bool FittedLine::isValid() const noexcept {
-        return std::isfinite(poly_a_) && std::isfinite(poly_b_) && std::isfinite(poly_c_)
-            && y_end_ > y_start_;
+        // RELAXED VALIDATION - only check for finite coefficients, allow y_end_ <= y_start_
+        return std::isfinite(poly_a_) && std::isfinite(poly_b_) && std::isfinite(poly_c_);
+        // Original check: && y_end_ > y_start_;
     }
 
     bool FittedLine::isConfident(std::uint8_t threshold) const noexcept {
@@ -104,8 +105,14 @@ namespace domain {
 
     std::vector<std::pair<float, float>> FittedLine::generatePoints(int numPoints) const {
         std::vector<std::pair<float, float>> points;
-        if (!isValid() || numPoints < 2) {
-            return points;
+
+        // REMOVED VALIDATION CHECK - generate points for all lines from TCP
+        // if (!isValid() || numPoints < 2) {
+        //     return points;
+        // }
+
+        if (numPoints < 2) {
+            numPoints = 2; // Ensure at least 2 points
         }
 
         // V2 Protocol: Use pixel points directly if available
@@ -131,8 +138,13 @@ namespace domain {
                 }
             }
 
-            if (v2Points.size() < 2) {
-                return points;
+            // REMOVED SIZE CHECK - try to draw even with less points
+            // if (v2Points.size() < 2) {
+            //     return points;
+            // }
+
+            if (v2Points.size() < 1) {
+                return points; // Can't draw without any points
             }
 
             // Sort by Y coordinate
@@ -144,8 +156,15 @@ namespace domain {
             const float y_end_px = v2Points.back().second;
             const float y_range = y_end_px - y_start_px;
 
-            if (std::abs(y_range) < 1.0f) {
-                // Very short line, just return the two endpoints
+            // REMOVED Y_RANGE CHECK - draw even very short lines
+            // if (std::abs(y_range) < 1.0f) {
+            //     // Very short line, just return the two endpoints
+            //     points = v2Points;
+            //     return points;
+            // }
+
+            // Handle edge case: if y_range is zero or very small, just return the raw points
+            if (std::abs(y_range) < 0.001f) {
                 points = v2Points;
                 return points;
             }

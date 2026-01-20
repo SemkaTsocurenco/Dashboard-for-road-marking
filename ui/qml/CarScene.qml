@@ -9,6 +9,49 @@ Node {
     property real cameraHeight: sceneConfig.cameraHeight
     property real cameraDistance: sceneConfig.cameraDistance
 
+    function laneColorFromString(colorName) {
+        const c = String(colorName || "").toLowerCase()
+        if (c === "yellow") return "#ffd700"
+        if (c === "red") return "#ff5555"
+        return "#ffffff"
+    }
+
+    function orderedLanePoints(points) {
+        var ordered = []
+        if (!points || points.length === 0)
+            return ordered
+        for (var i = 0; i < points.length; ++i) {
+            var p = points[i]
+            if (!p || !isFinite(p.x) || !isFinite(p.y))
+                continue
+            ordered.push({x: p.x, y: p.y, d2: p.x * p.x + p.y * p.y})
+        }
+        ordered.sort(function(a, b) { return b.d2 - a.d2 })
+        return ordered
+    }
+
+    function laneSegments(points) {
+        var ordered = orderedLanePoints(points)
+        var segments = []
+        if (ordered.length >= 2) {
+            segments.push({x1: ordered[0].x, y1: ordered[0].y, x2: ordered[1].x, y2: ordered[1].y})
+        }
+        if (ordered.length >= 3) {
+            segments.push({x1: ordered[1].x, y1: ordered[1].y, x2: ordered[2].x, y2: ordered[2].y})
+        }
+        return segments
+    }
+
+    readonly property color leftLaneColor: laneColorFromString(laneViewModel.laneColorLeft)
+    readonly property color rightLaneColor: laneColorFromString(laneViewModel.laneColorRight)
+    readonly property real lanePointRadius: 0.95
+    readonly property real lanePointHeight: 0.05
+    readonly property real laneLineWidth: sceneConfig.edgeLineWidth
+    readonly property real laneLineHeight: sceneConfig.roadThickness * 2
+    readonly property real laneLineY: lanePointHeight * 0.5
+    readonly property var leftLaneSegments: laneSegments(laneViewModel.leftPoints)
+    readonly property var rightLaneSegments: laneSegments(laneViewModel.rightPoints)
+
     PerspectiveCamera {
         id: camera
         position: Qt.vector3d(0, cameraHeight, cameraDistance) // look toward -Z
@@ -81,36 +124,47 @@ Node {
         }
     }
 
-    // Fitted Lines (polynomial curves)
+    // Left lane segments (farthest -> middle -> nearest)
     Repeater3D {
-        id: fittedLinesRepeater
-        model: fittedLinesModel
+        id: leftSegmentsRepeater
+        model: leftLaneSegments
 
-        delegate: PolyLine3D {
-            // Required properties from model (in decimeters)
-            required property real polyA
-            required property real polyB
-            required property real polyC
-            required property int yStart
-            required property int yEnd
-            required property string lineColorName
-            required property string lineStyleName
-            required property bool isValid
-            required property var pointsMeters
-            points: pointsMeters
+        delegate: Model {
+            required property var modelData
 
-            // Use internal names for PolyLine3D properties
-            yStartMeters: yStart / 10.0
-            yEndMeters: yEnd / 10.0
+            readonly property real x1: modelData.x1
+            readonly property real y1: modelData.y1
+            readonly property real x2: modelData.x2
+            readonly property real y2: modelData.y2
+            readonly property real dx: x2 - x1
+            readonly property real dy: y2 - y1
+            readonly property real segmentLength: Math.sqrt(dx * dx + dy * dy)
+            readonly property real angle: Math.atan2(dx, dy) * 180 / Math.PI
 
-            lineColor: {
-                const c = lineColorName.toLowerCase()
-                if (c === "yellow") return "#ffd700"
-                if (c === "red") return "#ff5555"
-                if (c === "white") return "#ffffff"
-                return "#ffffff"
+            visible: segmentLength > 0.001
+
+            source: "#Cube"
+
+            position: Qt.vector3d(
+                (x1 + dx / 2) * sceneConfig.scaleFactor,
+                laneLineY,
+                (y1 + dy / 2) * sceneConfig.scaleFactor
+            )
+
+            scale: Qt.vector3d(
+                laneLineWidth,
+                laneLineHeight,
+                segmentLength * sceneConfig.scaleFactor
+            )
+
+            eulerRotation: Qt.vector3d(0, angle, 0)
+
+            materials: PrincipledMaterial {
+                baseColor: leftLaneColor
+                roughness: 0.75
+                specularAmount: 0.0
+                emissiveFactor: Qt.vector3d(0.5, 0.5, 0.5)
             }
-            lineStyle: lineStyleName
         }
     }
 
@@ -119,19 +173,60 @@ Node {
         id: leftPointsRepeater
         model: laneViewModel.leftPoints
 
+
+
         delegate: LanePoint {
             required property point modelData
 
             xMeters: modelData.x
             yMeters: modelData.y
-            pointColor: {
-                const c = laneViewModel.laneColorLeft.toLowerCase()
-                if (c === "yellow") return "#ffd700"
-                if (c === "red") return "#ff5555"
-                return "#ffffff"
+            pointColor: leftLaneColor
+            radius: lanePointRadius
+            height: lanePointHeight
+        }
+    }
+
+    // Right lane segments (farthest -> middle -> nearest)
+    Repeater3D {
+        id: rightSegmentsRepeater
+        model: rightLaneSegments
+
+        delegate: Model {
+            required property var modelData
+
+            readonly property real x1: modelData.x1
+            readonly property real y1: modelData.y1
+            readonly property real x2: modelData.x2
+            readonly property real y2: modelData.y2
+            readonly property real dx: x2 - x1
+            readonly property real dy: y2 - y1
+            readonly property real segmentLength: Math.sqrt(dx * dx + dy * dy)
+            readonly property real angle: Math.atan2(dx, dy) * 180 / Math.PI
+
+            visible: segmentLength > 0.001
+
+            source: "#Cube"
+
+            position: Qt.vector3d(
+                (x1 + dx / 2) * sceneConfig.scaleFactor,
+                laneLineY,
+                (y1 + dy / 2) * sceneConfig.scaleFactor
+            )
+
+            scale: Qt.vector3d(
+                laneLineWidth,
+                laneLineHeight,
+                segmentLength * sceneConfig.scaleFactor
+            )
+
+            eulerRotation: Qt.vector3d(0, angle, 0)
+
+            materials: PrincipledMaterial {
+                baseColor: rightLaneColor
+                roughness: 0.75
+                specularAmount: 0.0
+                emissiveFactor: Qt.vector3d(0.5, 0.5, 0.5)
             }
-            radius: 0.25
-            height: 0.05
         }
     }
 
@@ -145,14 +240,9 @@ Node {
 
             xMeters: modelData.x
             yMeters: modelData.y
-            pointColor: {
-                const c = laneViewModel.laneColorRight.toLowerCase()
-                if (c === "yellow") return "#ffd700"
-                if (c === "red") return "#ff5555"
-                return "#ffffff"
-            }
-            radius: 0.25
-            height: 0.05
+            pointColor: rightLaneColor
+            radius: lanePointRadius
+            height: lanePointHeight
         }
     }
 }

@@ -17,8 +17,8 @@ Node {
     property color lineColor: "#ffffff"
     property string lineStyle: "Solid"  // "Solid", "Dashed", "Double"
 
-    // Line width
-    property real lineWidth: 0.12
+    // Line width (match RoadPlane edge line width)
+    property real lineWidth: 0.15
     property real lineHeight: 0.02
 
     // Number of segments
@@ -200,7 +200,7 @@ Node {
 
             position: Qt.vector3d(
                 (xPos + dx / 2) * sceneConfig.scaleFactor,
-                root.lineHeight / 2,
+                1.0,  // Match LanePoint height (slightly above road surface)
                 (yPos + dy / 2) * sceneConfig.scaleFactor
             )
 
@@ -214,13 +214,14 @@ Node {
 
             materials: PrincipledMaterial {
                 baseColor: root.lineColor
-                emissiveFactor: Qt.vector3d(
-                    root.lineColor.r * 0.3,
-                    root.lineColor.g * 0.3,
-                    root.lineColor.b * 0.3
-                )
-                roughness: 0.5
+                roughness: 0.75
+                specularAmount: 0.0
                 metalness: 0.0
+                emissiveFactor: Qt.vector3d(
+                    root.lineColor.r * 0.5,
+                    root.lineColor.g * 0.5,
+                    root.lineColor.b * 0.5
+                )
             }
         }
     }
@@ -261,7 +262,7 @@ Node {
 
             position: Qt.vector3d(
                 (xPos + dx / 2 + perpX) * sceneConfig.scaleFactor,
-                root.lineHeight / 2,
+                1.0,  // Match LanePoint height (slightly above road surface)
                 (yPos + dy / 2 + perpY) * sceneConfig.scaleFactor
             )
 
@@ -275,13 +276,14 @@ Node {
 
             materials: PrincipledMaterial {
                 baseColor: root.lineColor
-                emissiveFactor: Qt.vector3d(
-                    root.lineColor.r * 0.3,
-                    root.lineColor.g * 0.3,
-                    root.lineColor.b * 0.3
-                )
-                roughness: 0.5
+                roughness: 0.75
+                specularAmount: 0.0
                 metalness: 0.0
+                emissiveFactor: Qt.vector3d(
+                    root.lineColor.r * 0.5,
+                    root.lineColor.g * 0.5,
+                    root.lineColor.b * 0.5
+                )
             }
         }
     }
