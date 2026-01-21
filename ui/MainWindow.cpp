@@ -58,26 +58,53 @@ void MainWindow::setupMenuBar()
 
 void MainWindow::setupControlPanel()
 {
-    control_panel_ = new QGroupBox("Connection Control", this);
+    control_panel_ = new QGroupBox(this);
+    control_panel_->setFlat(true);
+    control_panel_->setTitle("");  // Remove title for more compact look
+
     auto* layout = new QHBoxLayout(control_panel_);
+    layout->setContentsMargins(8, 6, 8, 6);  // Reduced margins
+    layout->setSpacing(8);  // Reduced spacing
 
     const auto& ui_config = controller_->config().ui;
 
-    layout->addWidget(new QLabel("Host:", control_panel_));
+    // Host input group
+    auto* host_label = new QLabel("Host:", control_panel_);
+    host_label->setStyleSheet("font-weight: 600; color: #a5abb2;");
+    layout->addWidget(host_label);
+
     host_input_ = new QLineEdit(controller_->config().network.host, control_panel_);
     host_input_->setMaximumWidth(ui_config.host_input_max_width);
+    host_input_->setMinimumHeight(28);
     layout->addWidget(host_input_);
 
-    layout->addWidget(new QLabel("Port:", control_panel_));
+    // Port input group
+    auto* port_label = new QLabel("Port:", control_panel_);
+    port_label->setStyleSheet("font-weight: 600; color: #a5abb2;");
+    layout->addWidget(port_label);
+
     port_input_ = new QLineEdit(QString::number(controller_->config().network.port), control_panel_);
-    port_input_->setMaximumWidth(80);
+    port_input_->setMaximumWidth(70);
+    port_input_->setMinimumHeight(28);
     layout->addWidget(port_input_);
 
+    // Visual separator
+    auto* separator = new QFrame(control_panel_);
+    separator->setFrameShape(QFrame::VLine);
+    separator->setFrameShadow(QFrame::Plain);
+    separator->setStyleSheet("color: #313842;");
+    layout->addWidget(separator);
+
+    // Buttons
     connect_button_ = new QPushButton("Connect", control_panel_);
+    connect_button_->setMinimumWidth(85);
+    connect_button_->setMinimumHeight(28);
     connect(connect_button_, &QPushButton::clicked, this, &MainWindow::onConnectButtonClicked);
     layout->addWidget(connect_button_);
 
     disconnect_button_ = new QPushButton("Disconnect", control_panel_);
+    disconnect_button_->setMinimumWidth(85);
+    disconnect_button_->setMinimumHeight(28);
     disconnect_button_->setEnabled(false);
     connect(disconnect_button_, &QPushButton::clicked, this, &MainWindow::onDisconnectButtonClicked);
     layout->addWidget(disconnect_button_);
@@ -105,13 +132,17 @@ void MainWindow::setupContentPanel()
     dashboard_widget_->setAppController(controller_);
     content_splitter_->addWidget(dashboard_widget_);
 
-    content_splitter_->setStretchFactor(0, 1);
-    content_splitter_->setStretchFactor(1, 1);
-    // Force initial 50/50 split once layout is calculated
+    // Set stretch factors for 60/40 split (video gets more space)
+    content_splitter_->setStretchFactor(0, 3);  // Video: 60%
+    content_splitter_->setStretchFactor(1, 2);  // 3D Dashboard: 40%
+
+    // Force initial 60/40 split once layout is calculated
     QTimer::singleShot(0, this, [this, ui_config]() {
         if (content_splitter_) {
-            const int half = qMax(ui_config.min_content_width, this->width() / 2);
-            content_splitter_->setSizes({half, half});
+            const int total_width = this->width();
+            const int video_width = qMax(ui_config.min_content_width, static_cast<int>(total_width * 0.6));
+            const int dashboard_width = qMax(ui_config.min_content_width, static_cast<int>(total_width * 0.4));
+            content_splitter_->setSizes({video_width, dashboard_width});
         }
     });
 

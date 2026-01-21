@@ -1,6 +1,8 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
   <qresource prefix="/qml">
+        <file alias="Theme/qmldir">../ui/qml/Theme/qmldir</file>
+        <file alias="Theme/Theme.qml">../ui/qml/Theme/Theme.qml</file>
         <file alias="Dashboard.qml">../ui/qml/Dashboard.qml</file>
         <file alias="CarScene.qml">../ui/qml/CarScene.qml</file>
         <file alias="CarModel.qml">../ui/qml/CarModel.qml</file>
@@ -13,6 +15,9 @@
         <file alias="LanePoint.qml">../ui/qml/LanePoint.qml</file>
         <file alias="PolyLine3D.qml">../ui/qml/PolyLine3D.qml</file>
         <file alias="Bus.qml">glb/bus/converted/Bus.qml</file>
+  </qresource>
+  <qresource prefix="/styles">
+        <file alias="dark.qss">dark.qss</file>
   </qresource>
   <qresource prefix="/models/bus">
         <file alias="meshes/body_unchanged.mesh">glb/bus/converted/meshes/body_unchanged.mesh</file>

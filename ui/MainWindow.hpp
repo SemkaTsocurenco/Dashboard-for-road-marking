@@ -11,6 +11,7 @@
 #include <QLineEdit>
 #include <QCloseEvent>
 #include <QSplitter>
+#include <QFrame>
 
 #include "AppController.hpp"
 #include "DashboardWidget.hpp"

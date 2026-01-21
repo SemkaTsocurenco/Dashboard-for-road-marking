@@ -77,6 +77,10 @@ void DashboardWidget::setAppController(app::AppController* controller) {
     if (!quickWidget_->engine()->importPathList().contains(qmlPath)) {
         quickWidget_->engine()->addImportPath(qmlPath);
     }
+    const QString resourceQmlPath = QStringLiteral("qrc:/qml");
+    if (!quickWidget_->engine()->importPathList().contains(resourceQmlPath)) {
+        quickWidget_->engine()->addImportPath(resourceQmlPath);
+    }
 
     LOG_INFO << "Loading QML Dashboard.qml from resources. Import paths:";
     for (const auto& path : quickWidget_->engine()->importPathList()) {

@@ -1,11 +1,12 @@
 import QtQuick
+import Theme 1.0
 
 Item {
     id: root
 
     anchors.left: parent.left
     anchors.bottom: parent.bottom
-    anchors.margins: 20
+    anchors.margins: Theme.spacingXLarge
 
     width: sceneConfig.centerOffsetWidth
     height: sceneConfig.centerOffsetHeight
@@ -19,33 +20,34 @@ Item {
     property color markerColor: {
         var distance = Math.abs(clampedOffset)
         if (!hasData) {
-            return "#7f8c8d"
+            return Theme.textDisabled
         } else if (distance < sceneConfig.safeThresholdM) {
-            return "#2ecc71"
+            return Theme.success
         } else if (distance < sceneConfig.criticalThresholdM) {
-            return "#f39c12"
+            return Theme.warning
         } else {
-            return "#e74c3c"
+            return Theme.danger
         }
     }
 
     Rectangle {
         anchors.fill: parent
-        radius: 10
-        color: "#1f1f1f"
-        border.color: "#2b2b2b"
+        radius: Theme.radiusLarge
+        color: Theme.bgSurface1
+        opacity: Theme.overlayOpacity
+        border.color: Theme.border
         border.width: 1
     }
 
     Column {
         anchors.fill: parent
-        anchors.margins: 14
-        spacing: 12
+        anchors.margins: Theme.spacingMedium
+        spacing: Theme.spacingMedium
 
         Text {
             text: "Center Offset"
-            color: "white"
-            font.pixelSize: 16
+            color: Theme.textPrimary
+            font.pixelSize: Theme.fontLarge
             font.bold: true
             opacity: 0.9
         }
@@ -59,8 +61,8 @@ Item {
                 id: bar
                 anchors.fill: parent
                 radius: height / 2
-                color: "#2b2b2b"
-                border.color: "#3b3b3b"
+                color: Theme.bgSurface2
+                border.color: Theme.border
                 border.width: 1
 
                 Rectangle {
@@ -68,7 +70,7 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: 2
                     height: parent.height
-                    color: "#5a5a5a"
+                    color: Theme.textDisabled
                     opacity: 0.9
                 }
 
@@ -76,11 +78,11 @@ Item {
                     id: marker
                     width: 14
                     height: parent.height + 6
-                    radius: 6
+                    radius: Theme.radiusSmall
                     y: (parent.height - height) / 2
                     x: normalizedOffset * (parent.width - width)
                     color: markerColor
-                    border.color: "#0d0d0d"
+                    border.color: Theme.shadowColor
                     border.width: 1
                     opacity: hasData ? 1.0 : 0.7
 
@@ -100,42 +102,42 @@ Item {
                 Text {
                     anchors.left: parent.left
                     text: "-1.0 m"
-                    color: "#9a9a9a"
-                    font.pixelSize: 10
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontXSmall
                 }
 
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: "0"
-                    color: "#9a9a9a"
-                    font.pixelSize: 10
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontXSmall
                 }
 
                 Text {
                     anchors.right: parent.right
                     text: "+1.0 m"
-                    color: "#9a9a9a"
-                    font.pixelSize: 10
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontXSmall
                 }
             }
         }
 
         Row {
             width: parent.width
-            spacing: 8
+            spacing: Theme.spacingSmall
 
             Text {
                 text: hasData ? formattedOffset(offsetMeters) : "N/A"
-                color: "white"
-                font.pixelSize: 16
+                color: Theme.textPrimary
+                font.pixelSize: Theme.fontLarge
                 font.bold: true
             }
 
             Text {
                 visible: !hasData
                 text: "Waiting for data"
-                color: "#bbbbbb"
-                font.pixelSize: 12
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontSmall
                 opacity: 0.8
             }
         }

@@ -1,11 +1,12 @@
 import QtQuick
+import Theme 1.0
 
 Item {
     id: root
 
     anchors.right: parent.right
     anchors.bottom: parent.bottom
-    anchors.margins: 20
+    anchors.margins: Theme.spacingXLarge
 
     // Binding to controller connection state
     property bool dataConnected: appController ? appController.isDataConnected : false
@@ -20,7 +21,7 @@ Item {
         property string label: ""
         property bool connected: false
 
-        property color indicatorColor: connected ? "#2ecc71" : "#e74c3c"
+        property color indicatorColor: connected ? Theme.success : Theme.danger
 
         implicitWidth: row.implicitWidth + 12
         implicitHeight: 28
@@ -36,10 +37,10 @@ Item {
             Rectangle {
                 width: 12
                 height: 12
-                radius: 6
+                radius: Theme.radiusSmall
                 anchors.verticalCenter: parent.verticalCenter
                 color: indicatorColor
-                border.color: "#0d0d0d"
+                border.color: Theme.shadowColor
                 border.width: 1
 
                 Behavior on color {
@@ -49,8 +50,8 @@ Item {
 
             Text {
                 text: label
-                color: "white"
-                font.pixelSize: 14
+                color: Theme.textPrimary
+                font.pixelSize: Theme.fontMedium
                 font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
                 opacity: connected ? sceneConfig.connectedOpacity : sceneConfig.disconnectedOpacity
@@ -60,9 +61,10 @@ Item {
 
     Rectangle {
         id: background
-        radius: 10
-        color: "#1f1f1f"
-        border.color: "#2b2b2b"
+        radius: Theme.radiusLarge
+        color: Theme.bgSurface1
+        opacity: Theme.overlayOpacity
+        border.color: Theme.border
         border.width: 1
         width: contentRow.implicitWidth + 24
         height: contentRow.implicitHeight + 16

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick3D
+import Theme 1.0
 
 Item {
     id: root
@@ -18,7 +19,7 @@ Item {
 
         environment: SceneEnvironment {
             backgroundMode: SceneEnvironment.Color
-            clearColor: "#1a1a1a"
+            clearColor: Theme.bgBase
             antialiasingMode: SceneEnvironment.MSAA
             antialiasingQuality: SceneEnvironment.High
         }
@@ -45,33 +46,36 @@ Item {
         Rectangle {
             anchors.top: parent.top
             anchors.right: parent.right
-            anchors.margins: 10
+            anchors.margins: Theme.spacingXLarge
             width: sceneConfig.cameraInfoWidth
             height: sceneConfig.cameraInfoHeight
-            color: "#80000000"
-            radius: 5
+            color: Theme.bgSurface1
+            opacity: Theme.overlayOpacity
+            radius: Theme.radiusMedium
+            border.color: Theme.border
+            border.width: 1
 
             Column {
                 anchors.fill: parent
-                anchors.margins: 10
-                spacing: 5
+                anchors.margins: Theme.spacingMedium
+                spacing: Theme.spacingSmall
 
                 Text {
                     text: cameraController.positionText
-                    color: "#00ff00"
-                    font.pixelSize: 14
-                    font.family: "monospace"
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontMedium
+                    font.family: Theme.fontFamilyMono
                 }
                 Text {
                     text: cameraController.rotationText
-                    color: "#00ff00"
-                    font.pixelSize: 14
-                    font.family: "monospace"
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontMedium
+                    font.family: Theme.fontFamilyMono
                 }
                 Text {
                     text: "WASD+Space/Shift: move | Arrows: rotate | R: reset"
-                    color: "#ffff00"
-                    font.pixelSize: 10
+                    color: Theme.textDisabled
+                    font.pixelSize: Theme.fontXSmall
                 }
             }
         }
