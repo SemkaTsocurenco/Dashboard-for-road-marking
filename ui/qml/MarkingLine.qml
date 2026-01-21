@@ -50,6 +50,10 @@ Node {
         return "#ffffff"
     }
 
+    readonly property bool isMotorIcon: root.classId === 0x16
+    readonly property bool isBikeIcon: root.classId === 0x17
+    readonly property bool isRoadIcon: root.isMotorIcon || root.isBikeIcon
+
     // Common position and rotation
     property vector3d basePosition: Qt.vector3d(
         -xMeters * sceneConfig.scaleFactor,  // Negated to match fitted lines coordinate system
@@ -387,10 +391,107 @@ Node {
         }
     }
 
+    // Icons: simplified top-down silhouettes (bike/motor) instead of generic rectangles.
+    Node {
+        id: iconNode
+        visible: root.isRoadIcon
+        position: root.basePosition
+        eulerRotation.y: -root.yawDeg
+
+        readonly property real iconLength: root.lengthM
+        readonly property real iconWidth: root.widthM
+
+        readonly property real wheelRadius: Math.max(sceneConfig.markingMinWidth * 0.6, Math.min(iconWidth, iconLength) * 0.18)
+        readonly property real stroke: Math.max(sceneConfig.markingMinWidth * 0.25, wheelRadius * 0.35)
+
+        readonly property real zWheelFront: iconLength * 0.25
+        readonly property real zWheelRear: -iconLength * 0.25
+
+        PrincipledMaterial {
+            id: iconMaterial
+            baseColor: root.objectColor
+            emissiveFactor: Qt.vector3d(0.55, 0.55, 0.55)
+            roughness: 0.55
+            metalness: 0.0
+            specularAmount: 0.0
+        }
+
+        // Wheels
+        Model {
+            source: "#Cylinder"
+            position: Qt.vector3d(0, 0, iconNode.zWheelRear)
+            scale: Qt.vector3d(iconNode.wheelRadius, sceneConfig.markingHeight, iconNode.wheelRadius)
+            opacity: root.objectOpacity
+            castsShadows: false
+            receivesShadows: false
+            materials: [ iconMaterial ]
+        }
+
+        Model {
+            source: "#Cylinder"
+            position: Qt.vector3d(0, 0, iconNode.zWheelFront)
+            scale: Qt.vector3d(iconNode.wheelRadius, sceneConfig.markingHeight, iconNode.wheelRadius)
+            opacity: root.objectOpacity
+            castsShadows: false
+            receivesShadows: false
+            materials: [ iconMaterial ]
+        }
+
+        // Bike frame (simple line work)
+        Node {
+            visible: root.isBikeIcon
+
+            Model {
+                source: "#Cube"
+                position: Qt.vector3d(0, 0, 0)
+                scale: Qt.vector3d(iconNode.stroke, sceneConfig.markingHeight, iconNode.iconLength * 0.55)
+                opacity: root.objectOpacity
+                castsShadows: false
+                receivesShadows: false
+                materials: [ iconMaterial ]
+            }
+
+            Model {
+                source: "#Cube"
+                position: Qt.vector3d(iconNode.iconWidth * 0.18, 0, iconNode.zWheelFront * 0.55)
+                scale: Qt.vector3d(iconNode.iconWidth * 0.36, sceneConfig.markingHeight, iconNode.stroke)
+                opacity: root.objectOpacity
+                castsShadows: false
+                receivesShadows: false
+                materials: [ iconMaterial ]
+            }
+        }
+
+        // Motor silhouette (wider body block)
+        Node {
+            visible: root.isMotorIcon
+
+            Model {
+                source: "#Cube"
+                position: Qt.vector3d(0, 0, 0)
+                scale: Qt.vector3d(iconNode.iconWidth * 0.65, sceneConfig.markingHeight, iconNode.iconLength * 0.35)
+                opacity: root.objectOpacity
+                castsShadows: false
+                receivesShadows: false
+                materials: [ iconMaterial ]
+            }
+
+            Model {
+                source: "#Cube"
+                position: Qt.vector3d(iconNode.iconWidth * 0.18, 0, iconNode.zWheelFront * 0.45)
+                scale: Qt.vector3d(iconNode.iconWidth * 0.35, sceneConfig.markingHeight, iconNode.stroke)
+                opacity: root.objectOpacity
+                castsShadows: false
+                receivesShadows: false
+                materials: [ iconMaterial ]
+            }
+        }
+    }
+
     // Other objects: generic marking line/rectangle (style-aware).
     Node {
         id: genericNode
-        visible: !root.isCrosswalk && !root.isArrow
+        visible: !root.isCrosswalk && !root.isArrow && !root.isRoadIcon
         position: root.basePosition
         eulerRotation.y: -root.yawDeg
         opacity: root.objectOpacity
