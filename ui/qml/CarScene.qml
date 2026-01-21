@@ -1,7 +1,10 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick3D
 
 Node {
+    id: carScene
     // Expose camera to parent (Dashboard.qml)
     property alias camera: camera
 
@@ -9,53 +12,18 @@ Node {
     property real cameraHeight: sceneConfig.cameraHeight
     property real cameraDistance: sceneConfig.cameraDistance
 
-    function laneColorFromString(colorName) {
-        const c = String(colorName || "").toLowerCase()
-        if (c === "yellow") return "#ffd700"
-        if (c === "red") return "#ff5555"
-        return "#ffffff"
-    }
-
-    function orderedLanePoints(points) {
-        var ordered = []
-        if (!points || points.length === 0)
-            return ordered
-        for (var i = 0; i < points.length; ++i) {
-            var p = points[i]
-            if (!p || !isFinite(p.x) || !isFinite(p.y))
-                continue
-            ordered.push({x: p.x, y: p.y, d2: p.x * p.x + p.y * p.y})
-        }
-        ordered.sort(function(a, b) { return b.d2 - a.d2 })
-        return ordered
-    }
-
-    function laneSegments(points) {
-        var ordered = orderedLanePoints(points)
-        var segments = []
-        if (ordered.length >= 2) {
-            segments.push({x1: ordered[0].x, y1: ordered[0].y, x2: ordered[1].x, y2: ordered[1].y})
-        }
-        if (ordered.length >= 3) {
-            segments.push({x1: ordered[1].x, y1: ordered[1].y, x2: ordered[2].x, y2: ordered[2].y})
-        }
-        return segments
-    }
-
-    readonly property color leftLaneColor: laneColorFromString(laneViewModel.laneColorLeft)
-    readonly property color rightLaneColor: laneColorFromString(laneViewModel.laneColorRight)
     readonly property real lanePointRadius: 0.95
     readonly property real lanePointHeight: 0.05
     readonly property real laneLineWidth: sceneConfig.edgeLineWidth
     readonly property real laneLineHeight: sceneConfig.roadThickness * 2
     readonly property real laneLineY: lanePointHeight * 0.5
-    readonly property var leftLaneSegments: laneSegments(laneViewModel.leftPoints)
-    readonly property var rightLaneSegments: laneSegments(laneViewModel.rightPoints)
+    readonly property int fittedLineCurveSegments: 20
+    readonly property real fittedLineDoubleOffsetMeters: laneLineWidth * 1.5
 
     PerspectiveCamera {
         id: camera
-        position: Qt.vector3d(0, cameraHeight, cameraDistance) // look toward -Z
-        eulerRotation: Qt.vector3d(sceneConfig.cameraPitchAngle, 180, 0) // tilt downward toward the road
+        position: Qt.vector3d(1000, cameraHeight, cameraDistance) // look toward -Z
+        eulerRotation: Qt.vector3d(sceneConfig.cameraPitchAngle, 153, 0) // tilt downward toward the road
         fieldOfView: 60
         clipNear: sceneConfig.cameraClipNear
         clipFar: sceneConfig.cameraClipFar
@@ -106,143 +74,275 @@ Node {
         id: markingRepeater
         model: markingModel
 
+        Component.onCompleted: {
+            console.log("=== MarkingRepeater initialized")
+        }
+
         delegate: MarkingLine {
-            // Required properties are automatically bound to model roles
-            required property real xMeters
-            required property real yMeters
-            required property real lengthMeters
-            required property real widthMeters
-            required property real yawDeg
-            required property string className
-            required property bool isCrosswalk
-            required property bool isArrow
+            // Properties are required in MarkingLine.qml and automatically bound to model roles
+        }
+    }
+
+    // Fitted Lines Points and Segments (3 points per line from fittedLinesModel)
+    Repeater3D {
+        id: fittedLinesRepeater
+        model: fittedLinesModel
+
+        Component.onCompleted: {
+            console.log("=== FittedLinesRepeater initialized ===")
+        }
+
+        delegate: Node {
+            id: fittedLineDelegate
+
+            required property int side
+            required property string lineColorName
+            required property string lineStyleName
+            required property var pointsMeters
             required property bool isValid
-            required property int confidence
-            required property string lineColor
-            required property string lineStyle
-            required property int classId
-        }
-    }
 
-    // Left lane segments (farthest -> middle -> nearest)
-    Repeater3D {
-        id: leftSegmentsRepeater
-        model: leftLaneSegments
+            function toFiniteNumber(value, fallback) {
+                var n = Number(value);
+                return isFinite(n) ? n : (fallback === undefined ? 0 : fallback);
+            }
 
-        delegate: Model {
-            required property var modelData
+            function pointMetersAt(index) {
+                if (!pointsMeters || pointsMeters.length <= index || !pointsMeters[index])
+                    return Qt.vector2d(0, 0);
+                var p = pointsMeters[index];
+                return Qt.vector2d(
+                    toFiniteNumber(p.x, 0),
+                    toFiniteNumber(p.y, 0)
+                );
+            }
 
-            readonly property real x1: modelData.x1
-            readonly property real y1: modelData.y1
-            readonly property real x2: modelData.x2
-            readonly property real y2: modelData.y2
-            readonly property real dx: x2 - x1
-            readonly property real dy: y2 - y1
-            readonly property real segmentLength: Math.sqrt(dx * dx + dy * dy)
-            readonly property real angle: Math.atan2(dx, dy) * 180 / Math.PI
+            readonly property bool hasThreePoints: pointsMeters && pointsMeters.length >= 3
+            readonly property var p0: pointMetersAt(0)
+            readonly property var p1: pointMetersAt(1)
+            readonly property var p2: pointMetersAt(2)
 
-            visible: segmentLength > 0.001
+            readonly property string styleLower: String(fittedLineDelegate.lineStyleName || "").toLowerCase()
+            readonly property bool isDashedStyle: styleLower === "dashed"
+            readonly property bool isDoubleStyle: styleLower === "double"
 
-            source: "#Cube"
-
-            position: Qt.vector3d(
-                (x1 + dx / 2) * sceneConfig.scaleFactor,
-                laneLineY,
-                (y1 + dy / 2) * sceneConfig.scaleFactor
+            // Quadratic Bezier through p0 (t=0), p1 (t=0.5), p2 (t=1).
+            readonly property var controlPoint: Qt.vector2d(
+                2 * p1.x - 0.5 * (p0.x + p2.x),
+                2 * p1.y - 0.5 * (p0.y + p2.y)
             )
 
-            scale: Qt.vector3d(
-                laneLineWidth,
-                laneLineHeight,
-                segmentLength * sceneConfig.scaleFactor
-            )
+            function curvePointAt(t) {
+                var tt = Math.max(0.0, Math.min(1.0, Number(t)));
+                var s = 1.0 - tt;
+                var w0 = s * s;
+                var w1 = 2.0 * s * tt;
+                var w2 = tt * tt;
+                return Qt.vector2d(
+                    w0 * p0.x + w1 * controlPoint.x + w2 * p2.x,
+                    w0 * p0.y + w1 * controlPoint.y + w2 * p2.y
+                );
+            }
 
-            eulerRotation: Qt.vector3d(0, angle, 0)
+            readonly property real calculatedRadius: (fittedLineDelegate.side === 1 || fittedLineDelegate.side === 2) ? 1.2 : 0.8
+            readonly property string calculatedColor: {
+                const lc = String(fittedLineDelegate.lineColorName || "").toLowerCase()
+                if (lc === "yellow") return "#ffd700"
+                if (lc === "red") return "#ff5555"
+                return "#ffffff"
+            }
+            readonly property real pointHeight: carScene.lanePointHeight
 
-            materials: PrincipledMaterial {
-                baseColor: leftLaneColor
-                roughness: 0.75
-                specularAmount: 0.0
-                emissiveFactor: Qt.vector3d(0.5, 0.5, 0.5)
+            // Point 0
+            Node {
+                LanePoint {
+                    xMeters: -fittedLineDelegate.pointsMeters[0].x || 0
+                    yMeters: fittedLineDelegate.pointsMeters[0].y || 0
+                    pointColor: fittedLineDelegate.calculatedColor
+                    radius: fittedLineDelegate.calculatedRadius
+                    height: fittedLineDelegate.pointHeight
+                }
+            }
+
+            // Point 1
+            Node {
+                LanePoint {
+                    xMeters: -fittedLineDelegate.pointsMeters[1].x || 0
+                    yMeters: fittedLineDelegate.pointsMeters[1].y || 0
+                    pointColor: fittedLineDelegate.calculatedColor
+                    radius: fittedLineDelegate.calculatedRadius
+                    height: fittedLineDelegate.pointHeight
+                }
+            }
+
+            // Point 2
+            Node {
+                LanePoint {
+                    xMeters: -fittedLineDelegate.pointsMeters[2].x || 0
+                    yMeters: fittedLineDelegate.pointsMeters[2].y || 0
+                    pointColor: fittedLineDelegate.calculatedColor
+                    radius: fittedLineDelegate.calculatedRadius
+                    height: fittedLineDelegate.pointHeight
+                }
+            }
+
+            // Curve approximation as many short segments.
+            Repeater3D {
+                id: fittedLineCurveRepeater
+                model: (fittedLineDelegate.isValid && fittedLineDelegate.hasThreePoints && !fittedLineDelegate.isDoubleStyle) ? carScene.fittedLineCurveSegments : 0
+
+                Model {
+                    required property int index
+
+                    readonly property real t0: index / carScene.fittedLineCurveSegments
+                    readonly property real t1: (index + 1) / carScene.fittedLineCurveSegments
+
+                    readonly property var a: fittedLineDelegate.curvePointAt(t0)
+                    readonly property var b: fittedLineDelegate.curvePointAt(t1)
+
+                    readonly property real x1: a.x
+                    readonly property real y1: a.y
+                    readonly property real x2: b.x
+                    readonly property real y2: b.y
+
+                    readonly property real dx: x2 - x1
+                    readonly property real dy: y2 - y1
+                    readonly property real segmentLength: Math.sqrt(dx * dx + dy * dy)
+                    readonly property real angle: Math.atan2(dx, dy) * 180 / Math.PI
+                    readonly property bool showSegment: !fittedLineDelegate.isDashedStyle || (index % 2 === 0)
+
+                    visible: showSegment && segmentLength > 0.001
+                    source: "#Cube"
+
+                    position: Qt.vector3d(
+                        - (x1 + dx / 2) * sceneConfig.scaleFactor,
+                        laneLineY,
+                        (y1 + dy / 2) * sceneConfig.scaleFactor
+                    )
+
+                    scale: Qt.vector3d(
+                        laneLineWidth,
+                        laneLineHeight,
+                        segmentLength
+                    )
+
+                    eulerRotation: Qt.vector3d(0, -angle, 0)
+
+                    materials: PrincipledMaterial {
+                        baseColor: fittedLineDelegate.calculatedColor
+                        roughness: 0.75
+                        specularAmount: 0.0
+                        emissiveFactor: Qt.vector3d(0.5, 0.5, 0.5)
+                    }
+                }
+            }
+
+            // Double style: two parallel curves offset to both sides.
+            Repeater3D {
+                id: fittedLineDoubleCurveRepeaterPos
+                model: (fittedLineDelegate.isValid && fittedLineDelegate.hasThreePoints && fittedLineDelegate.isDoubleStyle) ? carScene.fittedLineCurveSegments : 0
+
+                Model {
+                    required property int index
+
+                    readonly property real t0: index / carScene.fittedLineCurveSegments
+                    readonly property real t1: (index + 1) / carScene.fittedLineCurveSegments
+
+                    readonly property var a: fittedLineDelegate.curvePointAt(t0)
+                    readonly property var b: fittedLineDelegate.curvePointAt(t1)
+
+                    readonly property real x1: a.x
+                    readonly property real y1: a.y
+                    readonly property real x2: b.x
+                    readonly property real y2: b.y
+
+                    readonly property real dx: x2 - x1
+                    readonly property real dy: y2 - y1
+                    readonly property real segmentLength: Math.sqrt(dx * dx + dy * dy)
+                    readonly property real angle: Math.atan2(dx, dy) * 180 / Math.PI
+
+                    readonly property real offsetAmount: carScene.fittedLineDoubleOffsetMeters * 0.5
+                    readonly property real perpX: segmentLength > 0.001 ? (-dy / segmentLength) * offsetAmount : 0
+                    readonly property real perpY: segmentLength > 0.001 ? (dx / segmentLength) * offsetAmount : 0
+
+                    visible: segmentLength > 0.001
+                    source: "#Cube"
+
+                    position: Qt.vector3d(
+                        - (x1 + dx / 2 + perpX) * sceneConfig.scaleFactor,
+                        laneLineY,
+                        (y1 + dy / 2 + perpY) * sceneConfig.scaleFactor
+                    )
+
+                    scale: Qt.vector3d(
+                        laneLineWidth * 0.8,
+                        laneLineHeight,
+                        segmentLength
+                    )
+
+                    eulerRotation: Qt.vector3d(0, -angle, 0)
+
+                    materials: PrincipledMaterial {
+                        baseColor: fittedLineDelegate.calculatedColor
+                        roughness: 0.75
+                        specularAmount: 0.0
+                        emissiveFactor: Qt.vector3d(0.5, 0.5, 0.5)
+                    }
+                }
+            }
+
+            Repeater3D {
+                id: fittedLineDoubleCurveRepeaterNeg
+                model: (fittedLineDelegate.isValid && fittedLineDelegate.hasThreePoints && fittedLineDelegate.isDoubleStyle) ? carScene.fittedLineCurveSegments : 0
+
+                Model {
+                    required property int index
+
+                    readonly property real t0: index / carScene.fittedLineCurveSegments
+                    readonly property real t1: (index + 1) / carScene.fittedLineCurveSegments
+
+                    readonly property var a: fittedLineDelegate.curvePointAt(t0)
+                    readonly property var b: fittedLineDelegate.curvePointAt(t1)
+
+                    readonly property real x1: a.x
+                    readonly property real y1: a.y
+                    readonly property real x2: b.x
+                    readonly property real y2: b.y
+
+                    readonly property real dx: x2 - x1
+                    readonly property real dy: y2 - y1
+                    readonly property real segmentLength: Math.sqrt(dx * dx + dy * dy)
+                    readonly property real angle: Math.atan2(dx, dy) * 180 / Math.PI
+
+                    readonly property real offsetAmount: carScene.fittedLineDoubleOffsetMeters * 0.5
+                    readonly property real perpX: segmentLength > 0.001 ? (-dy / segmentLength) * offsetAmount : 0
+                    readonly property real perpY: segmentLength > 0.001 ? (dx / segmentLength) * offsetAmount : 0
+
+                    visible: segmentLength > 0.001
+                    source: "#Cube"
+
+                    position: Qt.vector3d(
+                        - (x1 + dx / 2 - perpX) * sceneConfig.scaleFactor,
+                        laneLineY,
+                        (y1 + dy / 2 - perpY) * sceneConfig.scaleFactor
+                    )
+
+                    scale: Qt.vector3d(
+                        laneLineWidth * 0.8,
+                        laneLineHeight,
+                        segmentLength
+                    )
+
+                    eulerRotation: Qt.vector3d(0, -angle, 0)
+
+                    materials: PrincipledMaterial {
+                        baseColor: fittedLineDelegate.calculatedColor
+                        roughness: 0.75
+                        specularAmount: 0.0
+                        emissiveFactor: Qt.vector3d(0.5, 0.5, 0.5)
+                    }
+                }
             }
         }
     }
 
-    // Left lane points (colored pucks)
-    Repeater3D {
-        id: leftPointsRepeater
-        model: laneViewModel.leftPoints
-
-
-
-        delegate: LanePoint {
-            required property point modelData
-
-            xMeters: modelData.x
-            yMeters: modelData.y
-            pointColor: leftLaneColor
-            radius: lanePointRadius
-            height: lanePointHeight
-        }
-    }
-
-    // Right lane segments (farthest -> middle -> nearest)
-    Repeater3D {
-        id: rightSegmentsRepeater
-        model: rightLaneSegments
-
-        delegate: Model {
-            required property var modelData
-
-            readonly property real x1: modelData.x1
-            readonly property real y1: modelData.y1
-            readonly property real x2: modelData.x2
-            readonly property real y2: modelData.y2
-            readonly property real dx: x2 - x1
-            readonly property real dy: y2 - y1
-            readonly property real segmentLength: Math.sqrt(dx * dx + dy * dy)
-            readonly property real angle: Math.atan2(dx, dy) * 180 / Math.PI
-
-            visible: segmentLength > 0.001
-
-            source: "#Cube"
-
-            position: Qt.vector3d(
-                (x1 + dx / 2) * sceneConfig.scaleFactor,
-                laneLineY,
-                (y1 + dy / 2) * sceneConfig.scaleFactor
-            )
-
-            scale: Qt.vector3d(
-                laneLineWidth,
-                laneLineHeight,
-                segmentLength * sceneConfig.scaleFactor
-            )
-
-            eulerRotation: Qt.vector3d(0, angle, 0)
-
-            materials: PrincipledMaterial {
-                baseColor: rightLaneColor
-                roughness: 0.75
-                specularAmount: 0.0
-                emissiveFactor: Qt.vector3d(0.5, 0.5, 0.5)
-            }
-        }
-    }
-
-    // Right lane points (colored pucks based on lane color)
-    Repeater3D {
-        id: rightPointsRepeater
-        model: laneViewModel.rightPoints
-
-        delegate: LanePoint {
-            required property point modelData
-
-            xMeters: modelData.x
-            yMeters: modelData.y
-            pointColor: rightLaneColor
-            radius: lanePointRadius
-            height: lanePointHeight
-        }
-    }
 }

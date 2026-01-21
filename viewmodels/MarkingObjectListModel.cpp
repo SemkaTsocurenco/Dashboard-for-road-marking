@@ -15,16 +15,22 @@ namespace viewmodels {
         objects_.clear();
         objects_.reserve(model.size());
 
+        LOG_WARN << "MarkingObjectListModel::updateFromDomain() - updating with " << model.size() << " objects";
+
         for (const auto& obj : model) {
-            LOG_DEBUG << "MarkingObject from domain: x=" << obj.xMeters()
-                     << "y=" << obj.yMeters()
-                     << "length=" << obj.lengthMeters()
-                     << "width=" << obj.widthMeters()
-                     << "yaw=" << obj.yawDeg()
-                     << "confidence=" << obj.confidence()
-                     << "valid=" << obj.isValid()
-                     << "color=" << static_cast<int>(obj.lineColor())
-                     << "style=" << static_cast<int>(obj.lineStyle());
+            LOG_WARN << "MarkingObject from domain: "
+                     << "classId=" << static_cast<int>(obj.classId())
+                     << " x=" << obj.xMeters()
+                     << " y=" << obj.yMeters()
+                     << " length=" << obj.lengthMeters()
+                     << " width=" << obj.widthMeters()
+                     << " yaw=" << obj.yawDeg()
+                     << " confidence=" << static_cast<int>(obj.confidence())
+                     << " valid=" << obj.isValid()
+                     << " color=" << static_cast<int>(obj.lineColor())
+                     << " style=" << static_cast<int>(obj.lineStyle())
+                     << " isCrosswalk=" << obj.isCrosswalk()
+                     << " isArrow=" << obj.isArrow();
             objects_.push_back(obj);
         }
 
@@ -35,6 +41,8 @@ namespace viewmodels {
 
         endResetModel();
         emit countChanged(static_cast<int>(objects_.size()));
+
+        LOG_WARN << "MarkingObjectListModel updated, total objects: " << objects_.size();
     }
 
     void MarkingObjectListModel::clear() {

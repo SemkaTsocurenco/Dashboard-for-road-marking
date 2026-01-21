@@ -3,8 +3,8 @@
     "scale_factor": 100
   },
   "camera": {
-    "height": 250.0,
-    "distance": -250.0,
+    "height": 1000.0,
+    "distance": -1000.0,
     "pitch_angle_deg": -20.0,
     "clip_near": 10.1,
     "clip_far": 50000.0

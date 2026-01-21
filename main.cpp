@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     // Initialize logger
-    logger::Logger::instance().set_level(logger::LogLevel::Debug);
+    logger::Logger::instance().set_level(logger::LogLevel::Warn);
     LOG_INFO << "=== Dashboard Application Starting ===";
 
     // Parse CLI overrides
