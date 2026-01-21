@@ -68,11 +68,19 @@ Node {
         position: root.basePosition
         eulerRotation.y: -root.yawDeg
 
-        // Zebra crossing: stripes repeat along the travel direction (local Z) and span the full width (local X).
-        // Typical crosswalk: ~40-50cm stripe thickness along the road direction.
-        readonly property real stripeThicknessMeters: 0.5
-        readonly property int stripeCount: Math.max(4, Math.floor(root.lengthM / (stripeThicknessMeters * 2)))
-        readonly property real actualStripeThickness: root.lengthM / (stripeCount * 2) // white + gap
+        // Zebra crossing: stripes extend along Z axis (road direction), positioned along X axis (across road)
+        // widthM = road width (X axis), lengthM = crosswalk depth (Z axis)
+        readonly property real stripeThicknessMeters: 0.8
+        readonly property real gapThicknessMeters: 0.6
+        // Fill entire road width with stripes
+        readonly property int stripeCount: Math.max(4, Math.floor(root.lengthM / (stripeThicknessMeters + gapThicknessMeters)))
+        readonly property real actualStripeThickness: stripeThicknessMeters
+
+        Component.onCompleted: {
+            console.log("Crosswalk created: stripeCount=", stripeCount,
+                       "lengthM (Z/depth)=", root.lengthM.toFixed(2),
+                       "widthM (X/road width)=", root.widthM.toFixed(2))
+        }
 
         Repeater3D {
             model: crosswalkNode.stripeCount
@@ -81,17 +89,22 @@ Node {
                 required property int index
                 source: "#Cube"
 
-                // Position stripes evenly along length (local Z)
+                Component.onCompleted: {
+                    console.log("Crosswalk stripe", index, "pos X=",
+                               ((index - crosswalkNode.stripeCount / 2 + 0.5) * (crosswalkNode.stripeThicknessMeters + crosswalkNode.gapThicknessMeters)).toFixed(2))
+                }
+
+                // Position stripes evenly across the road (local X)
                 position: Qt.vector3d(
+                    (index - crosswalkNode.stripeCount / 2 + 0.5) * (crosswalkNode.stripeThicknessMeters + crosswalkNode.gapThicknessMeters) * sceneConfig.scaleFactor,
                     0,
-                    0,
-                    (index - crosswalkNode.stripeCount / 2 + 0.5) * crosswalkNode.actualStripeThickness * 2
+                    0
                 )
 
                 scale: Qt.vector3d(
-                    root.widthM,  // span full crosswalk width
+                    crosswalkNode.actualStripeThickness,  // stripe thickness (X axis)
                     sceneConfig.markingHeight,
-                    crosswalkNode.actualStripeThickness * 0.92 // slight gap between stripes
+                    root.lengthM  // stripe length along road (Z axis)
                 )
 
                 opacity: root.objectOpacity
@@ -114,7 +127,7 @@ Node {
         id: arrowNode
         visible: root.isArrow
         position: root.basePosition
-        eulerRotation.y: -root.yawDeg
+        eulerRotation.y: 90
 
         readonly property int arrowLeftId: 0x0B
         readonly property int arrowStraightId: 0x0C
@@ -153,46 +166,32 @@ Node {
             visible: arrowNode.isStraightOnly
 
             readonly property real tailZ: -arrowNode.totalLength / 2
-            readonly property real shaftLength: arrowNode.totalLength * 0.62
-            readonly property real headLength: arrowNode.totalLength - shaftLength
-            readonly property real shaftWidth: Math.max(arrowNode.totalWidth * 0.22, sceneConfig.markingMinWidth * 0.6)
-            readonly property real headBaseWidth: arrowNode.totalWidth * 0.92
-            readonly property real headTipWidth: Math.max(arrowNode.totalWidth * 0.12, sceneConfig.markingMinWidth * 0.6)
-            readonly property int headSegments: Math.max(8, Math.min(18, Math.floor(arrowNode.totalLength * 6)))
+            readonly property real shaftLength: arrowNode.totalLength * 0.60
+            readonly property real headLength: arrowNode.totalLength * 0.40
+            readonly property real shaftWidth: Math.max(arrowNode.totalWidth * 0.25, sceneConfig.markingMinWidth * 0.6)
+            readonly property real headBaseWidth: arrowNode.totalWidth * 0.75
 
+            // Arrow shaft (ствол стрелки)
             Model {
                 source: "#Cube"
                 position: Qt.vector3d(0, 0, straightArrowSingle.tailZ + straightArrowSingle.shaftLength / 2)
-                scale: Qt.vector3d(straightArrowSingle.shaftWidth, sceneConfig.markingHeight, straightArrowSingle.shaftLength)
+                scale: Qt.vector3d(straightArrowSingle.shaftLength, sceneConfig.markingHeight,straightArrowSingle.shaftWidth )
                 opacity: root.objectOpacity
                 castsShadows: false
                 receivesShadows: false
                 materials: ArrowMaterial { }
             }
 
-            Repeater3D {
-                model: straightArrowSingle.headSegments
-
-                delegate: Model {
-                    required property int index
-                    source: "#Cube"
-
-                    readonly property real segLen: straightArrowSingle.headLength / straightArrowSingle.headSegments
-                    readonly property real t: (index + 0.5) / straightArrowSingle.headSegments
-                    readonly property real widthAtT: straightArrowSingle.headBaseWidth * (1.0 - t) + straightArrowSingle.headTipWidth * t
-
-                    position: Qt.vector3d(
-                        0,
-                        0,
-                        straightArrowSingle.tailZ + straightArrowSingle.shaftLength + (index + 0.5) * segLen
-                    )
-
-                    scale: Qt.vector3d(widthAtT, sceneConfig.markingHeight, segLen * 0.96)
-                    opacity: root.objectOpacity
-                    castsShadows: false
-                    receivesShadows: false
-                    materials: ArrowMaterial { }
-                }
+            // Arrow head (головка стрелки - конус, повернутый на 90 градусов)
+            Model {
+                source: "#Cone"
+                position: Qt.vector3d(0, 0, straightArrowSingle.tailZ + straightArrowSingle.shaftLength + straightArrowSingle.headLength / 2)
+                eulerRotation: Qt.vector3d(0, 0, 90)
+                scale: Qt.vector3d( sceneConfig.markingHeight * 50, straightArrowSingle.headLength,straightArrowSingle.headBaseWidth)
+                opacity: root.objectOpacity
+                castsShadows: false
+                receivesShadows: false
+                materials: ArrowMaterial { }
             }
         }
 
@@ -205,16 +204,13 @@ Node {
             readonly property real dir: isLeft ? -1.0 : 1.0
 
             readonly property real tailZ: -arrowNode.totalLength / 2
-            readonly property real stemLength: arrowNode.totalLength * 0.58
+            readonly property real stemLength: arrowNode.totalLength * 0.60
             readonly property real bendZ: tailZ + stemLength
-            readonly property real stemWidth: Math.max(arrowNode.totalWidth * 0.22, sceneConfig.markingMinWidth * 0.6)
+            readonly property real stemWidth: Math.max(arrowNode.totalWidth * 0.25, sceneConfig.markingMinWidth * 0.6)
 
-            // Side branch occupies half of available width from center to edge.
             readonly property real sideShaftLength: arrowNode.totalWidth * 0.25
-            readonly property real sideHeadLength: arrowNode.totalWidth * 0.25
-            readonly property real sideHeadBaseWidth: stemWidth * 2.2
-            readonly property real sideHeadTipWidth: stemWidth * 0.55
-            readonly property int sideHeadSegments: Math.max(6, Math.min(14, Math.floor(arrowNode.totalWidth * 5)))
+            readonly property real sideHeadLength: arrowNode.totalWidth * 0.40
+            readonly property real sideHeadBaseWidth: stemWidth * 3.0
 
             // Stem (forward).
             Model {
@@ -231,39 +227,27 @@ Node {
             Model {
                 source: "#Cube"
                 position: Qt.vector3d(turnArrowSingle.dir * (turnArrowSingle.sideShaftLength / 2), 0, turnArrowSingle.bendZ)
-                eulerRotation: Qt.vector3d(0, turnArrowSingle.isLeft ? -90 : 90, 0)
-                scale: Qt.vector3d(turnArrowSingle.stemWidth, sceneConfig.markingHeight, turnArrowSingle.sideShaftLength)
+                scale: Qt.vector3d(turnArrowSingle.sideShaftLength, sceneConfig.markingHeight, turnArrowSingle.stemWidth)
                 opacity: root.objectOpacity
                 castsShadows: false
                 receivesShadows: false
                 materials: ArrowMaterial { }
             }
 
-            // Side arrow head (triangular, segmented).
-            Repeater3D {
-                model: turnArrowSingle.sideHeadSegments
-
-                delegate: Model {
-                    required property int index
-                    source: "#Cube"
-
-                    readonly property real segLen: turnArrowSingle.sideHeadLength / turnArrowSingle.sideHeadSegments
-                    readonly property real t: (index + 0.5) / turnArrowSingle.sideHeadSegments
-                    readonly property real widthAtT: turnArrowSingle.sideHeadBaseWidth * (1.0 - t) + turnArrowSingle.sideHeadTipWidth * t
-
-                    position: Qt.vector3d(
-                        turnArrowSingle.dir * (turnArrowSingle.sideShaftLength + (index + 0.5) * segLen),
-                        0,
-                        turnArrowSingle.bendZ
-                    )
-                    eulerRotation: Qt.vector3d(0, turnArrowSingle.isLeft ? -90 : 90, 0)
-
-                    scale: Qt.vector3d(widthAtT, sceneConfig.markingHeight, segLen * 0.96)
-                    opacity: root.objectOpacity
-                    castsShadows: false
-                    receivesShadows: false
-                    materials: ArrowMaterial { }
-                }
+            // Side arrow head (cone).
+            Model {
+                source: "#Cone"
+                position: Qt.vector3d(
+                    turnArrowSingle.dir * (turnArrowSingle.sideShaftLength + turnArrowSingle.sideHeadLength / 2),
+                    0,
+                    turnArrowSingle.bendZ
+                )
+                eulerRotation: Qt.vector3d(0, turnArrowSingle.isLeft ? 90 : -90, 90)
+                scale: Qt.vector3d(sceneConfig.markingHeight * 50, turnArrowSingle.sideHeadLength, turnArrowSingle.sideHeadBaseWidth)
+                opacity: root.objectOpacity
+                castsShadows: false
+                receivesShadows: false
+                materials: ArrowMaterial { }
             }
         }
 
@@ -279,48 +263,32 @@ Node {
             // Straight arrow (one side).
             Node {
                 id: straightInPair
-                readonly property real xOffset: arrowNode.isLeftStraight ? pairOffset : -pairOffset
+                readonly property real xOffset: arrowNode.isLeftStraight ? arrowPair.pairOffset : -arrowPair.pairOffset
 
-                readonly property real shaftLength: arrowNode.totalLength * 0.62
-                readonly property real headLength: arrowNode.totalLength - shaftLength
-                readonly property real shaftWidth: Math.max(arrowPair.eachWidth * 0.22, sceneConfig.markingMinWidth * 0.5)
-                readonly property real headBaseWidth: arrowPair.eachWidth * 0.92
-                readonly property real headTipWidth: Math.max(arrowPair.eachWidth * 0.12, sceneConfig.markingMinWidth * 0.5)
-                readonly property int headSegments: Math.max(8, Math.min(18, Math.floor(arrowNode.totalLength * 6)))
+                readonly property real shaftLength: arrowNode.totalLength * 0.60
+                readonly property real headLength: arrowNode.totalLength * 0.40
+                readonly property real shaftWidth: Math.max(arrowPair.eachWidth * 0.25, sceneConfig.markingMinWidth * 0.5)
+                readonly property real headBaseWidth: arrowPair.eachWidth * 0.75
 
                 Model {
                     source: "#Cube"
                     position: Qt.vector3d(straightInPair.xOffset, 0, arrowPair.tailZ + straightInPair.shaftLength / 2)
-                    scale: Qt.vector3d(straightInPair.shaftWidth, sceneConfig.markingHeight, straightInPair.shaftLength)
+                    scale: Qt.vector3d(straightInPair.shaftLength, sceneConfig.markingHeight, straightInPair.shaftWidth)
                     opacity: root.objectOpacity
                     castsShadows: false
                     receivesShadows: false
                     materials: ArrowMaterial { }
                 }
 
-                Repeater3D {
-                    model: straightInPair.headSegments
-
-                    delegate: Model {
-                        required property int index
-                        source: "#Cube"
-
-                        readonly property real segLen: straightInPair.headLength / straightInPair.headSegments
-                        readonly property real t: (index + 0.5) / straightInPair.headSegments
-                        readonly property real widthAtT: straightInPair.headBaseWidth * (1.0 - t) + straightInPair.headTipWidth * t
-
-                        position: Qt.vector3d(
-                            straightInPair.xOffset,
-                            0,
-                            arrowPair.tailZ + straightInPair.shaftLength + (index + 0.5) * segLen
-                        )
-
-                        scale: Qt.vector3d(widthAtT, sceneConfig.markingHeight, segLen * 0.96)
-                        opacity: root.objectOpacity
-                        castsShadows: false
-                        receivesShadows: false
-                        materials: ArrowMaterial { }
-                    }
+                Model {
+                    source: "#Cone"
+                    position: Qt.vector3d(straightInPair.xOffset, 0, arrowPair.tailZ + straightInPair.shaftLength + straightInPair.headLength / 2)
+                    eulerRotation: Qt.vector3d(0, 0, 90)
+                    scale: Qt.vector3d(sceneConfig.markingHeight * 50, straightInPair.headLength, straightInPair.headBaseWidth)
+                    opacity: root.objectOpacity
+                    castsShadows: false
+                    receivesShadows: false
+                    materials: ArrowMaterial { }
                 }
             }
 
@@ -329,17 +297,15 @@ Node {
                 id: turnInPair
                 readonly property bool isLeft: arrowNode.isLeftStraight
                 readonly property real dir: isLeft ? -1.0 : 1.0
-                readonly property real xOffset: isLeft ? -pairOffset : pairOffset
+                readonly property real xOffset: isLeft ? -arrowPair.pairOffset : arrowPair.pairOffset
 
-                readonly property real stemLength: arrowNode.totalLength * 0.58
+                readonly property real stemLength: arrowNode.totalLength * 0.60
                 readonly property real bendZ: arrowPair.tailZ + stemLength
-                readonly property real stemWidth: Math.max(arrowPair.eachWidth * 0.22, sceneConfig.markingMinWidth * 0.5)
+                readonly property real stemWidth: Math.max(arrowPair.eachWidth * 0.25, sceneConfig.markingMinWidth * 0.5)
 
                 readonly property real sideShaftLength: arrowPair.eachWidth * 0.25
-                readonly property real sideHeadLength: arrowPair.eachWidth * 0.25
-                readonly property real sideHeadBaseWidth: stemWidth * 2.2
-                readonly property real sideHeadTipWidth: stemWidth * 0.55
-                readonly property int sideHeadSegments: Math.max(6, Math.min(14, Math.floor(arrowPair.eachWidth * 5)))
+                readonly property real sideHeadLength: arrowPair.eachWidth * 0.40
+                readonly property real sideHeadBaseWidth: stemWidth * 3.0
 
                 Model {
                     source: "#Cube"
@@ -354,38 +320,26 @@ Node {
                 Model {
                     source: "#Cube"
                     position: Qt.vector3d(turnInPair.xOffset + turnInPair.dir * (turnInPair.sideShaftLength / 2), 0, turnInPair.bendZ)
-                    eulerRotation: Qt.vector3d(0, turnInPair.isLeft ? -90 : 90, 0)
-                    scale: Qt.vector3d(turnInPair.stemWidth, sceneConfig.markingHeight, turnInPair.sideShaftLength)
+                    scale: Qt.vector3d(turnInPair.sideShaftLength, sceneConfig.markingHeight, turnInPair.stemWidth)
                     opacity: root.objectOpacity
                     castsShadows: false
                     receivesShadows: false
                     materials: ArrowMaterial { }
                 }
 
-                Repeater3D {
-                    model: turnInPair.sideHeadSegments
-
-                    delegate: Model {
-                        required property int index
-                        source: "#Cube"
-
-                        readonly property real segLen: turnInPair.sideHeadLength / turnInPair.sideHeadSegments
-                        readonly property real t: (index + 0.5) / turnInPair.sideHeadSegments
-                        readonly property real widthAtT: turnInPair.sideHeadBaseWidth * (1.0 - t) + turnInPair.sideHeadTipWidth * t
-
-                        position: Qt.vector3d(
-                            turnInPair.xOffset + turnInPair.dir * (turnInPair.sideShaftLength + (index + 0.5) * segLen),
-                            0,
-                            turnInPair.bendZ
-                        )
-                        eulerRotation: Qt.vector3d(0, turnInPair.isLeft ? -90 : 90, 0)
-
-                        scale: Qt.vector3d(widthAtT, sceneConfig.markingHeight, segLen * 0.96)
-                        opacity: root.objectOpacity
-                        castsShadows: false
-                        receivesShadows: false
-                        materials: ArrowMaterial { }
-                    }
+                Model {
+                    source: "#Cone"
+                    position: Qt.vector3d(
+                        turnInPair.xOffset + turnInPair.dir * (turnInPair.sideShaftLength + turnInPair.sideHeadLength / 2),
+                        0,
+                        turnInPair.bendZ
+                    )
+                    eulerRotation: Qt.vector3d(0, turnInPair.isLeft ? 90 : -90, 90)
+                    scale: Qt.vector3d(sceneConfig.markingHeight * 50, turnInPair.sideHeadLength, turnInPair.sideHeadBaseWidth)
+                    opacity: root.objectOpacity
+                    castsShadows: false
+                    receivesShadows: false
+                    materials: ArrowMaterial { }
                 }
             }
         }
