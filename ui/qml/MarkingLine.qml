@@ -31,8 +31,8 @@ Node {
                     "isArrow:", isArrow)
     }
 
-    readonly property real lengthM: Math.max(Number(root.lengthMeters) || 0, sceneConfig.markingMinLength)
-    readonly property real widthM: Math.max(Number(root.widthMeters) || 0, sceneConfig.markingMinWidth)
+    readonly property real widthM: Math.max(Number(root.lengthMeters) || 0, sceneConfig.markingMinLength) 
+    readonly property real lengthM: Math.max(Number(root.widthMeters) || 0, sceneConfig.markingMinWidth) 
 
     // Reduce opacity if confidence is low
     property real objectOpacity: Math.max(sceneConfig.markingMinOpacity,
@@ -89,10 +89,6 @@ Node {
                 required property int index
                 source: "#Cube"
 
-                Component.onCompleted: {
-                    console.log("Crosswalk stripe", index, "pos X=",
-                               ((index - crosswalkNode.stripeCount / 2 + 0.5) * (crosswalkNode.stripeThicknessMeters + crosswalkNode.gapThicknessMeters)).toFixed(2))
-                }
 
                 // Position stripes evenly across the road (local X)
                 position: Qt.vector3d(
@@ -122,12 +118,13 @@ Node {
         }
     }
 
+
+
     // Arrows: render per classId (straight / turn / combined) so they look like actual pavement arrows.
     Node {
         id: arrowNode
         visible: root.isArrow
         position: root.basePosition
-        eulerRotation.y: 90
 
         readonly property int arrowLeftId: 0x0B
         readonly property int arrowStraightId: 0x0C
@@ -174,8 +171,8 @@ Node {
             // Arrow shaft (ствол стрелки)
             Model {
                 source: "#Cube"
-                position: Qt.vector3d(0, 0, straightArrowSingle.tailZ + straightArrowSingle.shaftLength / 2)
-                scale: Qt.vector3d(straightArrowSingle.shaftLength, sceneConfig.markingHeight,straightArrowSingle.shaftWidth )
+                position: Qt.vector3d(0, 10, straightArrowSingle.tailZ + straightArrowSingle.shaftLength / 2)
+                scale: Qt.vector3d(straightArrowSingle.shaftWidth, sceneConfig.markingHeight,straightArrowSingle.shaftLength )
                 opacity: root.objectOpacity
                 castsShadows: false
                 receivesShadows: false
@@ -185,9 +182,9 @@ Node {
             // Arrow head (головка стрелки - конус, повернутый на 90 градусов)
             Model {
                 source: "#Cone"
-                position: Qt.vector3d(0, 0, straightArrowSingle.tailZ + straightArrowSingle.shaftLength + straightArrowSingle.headLength / 2)
-                eulerRotation: Qt.vector3d(0, 0, 90)
-                scale: Qt.vector3d( sceneConfig.markingHeight * 50, straightArrowSingle.headLength,straightArrowSingle.headBaseWidth)
+                position: Qt.vector3d(0, 10, straightArrowSingle.tailZ + straightArrowSingle.shaftLength + straightArrowSingle.headLength / 2)
+                scale: Qt.vector3d(  straightArrowSingle.headBaseWidth , straightArrowSingle.headLength, 0.05)
+                eulerRotation: Qt.vector3d(90, 0, 0)
                 opacity: root.objectOpacity
                 castsShadows: false
                 receivesShadows: false
@@ -215,7 +212,7 @@ Node {
             // Stem (forward).
             Model {
                 source: "#Cube"
-                position: Qt.vector3d(0, 0, turnArrowSingle.tailZ + turnArrowSingle.stemLength / 2)
+                position: Qt.vector3d(0, 10, turnArrowSingle.tailZ + turnArrowSingle.stemLength / 2)
                 scale: Qt.vector3d(turnArrowSingle.stemWidth, sceneConfig.markingHeight, turnArrowSingle.stemLength)
                 opacity: root.objectOpacity
                 castsShadows: false
@@ -226,7 +223,7 @@ Node {
             // Side shaft.
             Model {
                 source: "#Cube"
-                position: Qt.vector3d(turnArrowSingle.dir * (turnArrowSingle.sideShaftLength / 2), 0, turnArrowSingle.bendZ)
+                position: Qt.vector3d(turnArrowSingle.dir * (turnArrowSingle.sideShaftLength / 2), 10, turnArrowSingle.bendZ)
                 scale: Qt.vector3d(turnArrowSingle.sideShaftLength, sceneConfig.markingHeight, turnArrowSingle.stemWidth)
                 opacity: root.objectOpacity
                 castsShadows: false
@@ -239,11 +236,11 @@ Node {
                 source: "#Cone"
                 position: Qt.vector3d(
                     turnArrowSingle.dir * (turnArrowSingle.sideShaftLength + turnArrowSingle.sideHeadLength / 2),
-                    0,
+                    10,
                     turnArrowSingle.bendZ
                 )
-                eulerRotation: Qt.vector3d(0, turnArrowSingle.isLeft ? 90 : -90, 90)
-                scale: Qt.vector3d(sceneConfig.markingHeight * 50, turnArrowSingle.sideHeadLength, turnArrowSingle.sideHeadBaseWidth)
+                eulerRotation: Qt.vector3d(0, turnArrowSingle.isLeft ? -90 : 90, 0)
+                scale: Qt.vector3d(turnArrowSingle.sideHeadBaseWidth, turnArrowSingle.sideHeadLength, 0.05)
                 opacity: root.objectOpacity
                 castsShadows: false
                 receivesShadows: false
@@ -272,8 +269,8 @@ Node {
 
                 Model {
                     source: "#Cube"
-                    position: Qt.vector3d(straightInPair.xOffset, 0, arrowPair.tailZ + straightInPair.shaftLength / 2)
-                    scale: Qt.vector3d(straightInPair.shaftLength, sceneConfig.markingHeight, straightInPair.shaftWidth)
+                    position: Qt.vector3d(straightInPair.xOffset, 10, arrowPair.tailZ + straightInPair.shaftLength / 2)
+                    scale: Qt.vector3d(straightInPair.shaftWidth, sceneConfig.markingHeight, straightInPair.shaftLength)
                     opacity: root.objectOpacity
                     castsShadows: false
                     receivesShadows: false
@@ -282,9 +279,9 @@ Node {
 
                 Model {
                     source: "#Cone"
-                    position: Qt.vector3d(straightInPair.xOffset, 0, arrowPair.tailZ + straightInPair.shaftLength + straightInPair.headLength / 2)
-                    eulerRotation: Qt.vector3d(0, 0, 90)
-                    scale: Qt.vector3d(sceneConfig.markingHeight * 50, straightInPair.headLength, straightInPair.headBaseWidth)
+                    position: Qt.vector3d(straightInPair.xOffset, 10, arrowPair.tailZ + straightInPair.shaftLength + straightInPair.headLength / 2)
+                    eulerRotation: Qt.vector3d(90, 0, 0)
+                    scale: Qt.vector3d(straightInPair.headBaseWidth, straightInPair.headLength, 0.05)
                     opacity: root.objectOpacity
                     castsShadows: false
                     receivesShadows: false
@@ -309,7 +306,7 @@ Node {
 
                 Model {
                     source: "#Cube"
-                    position: Qt.vector3d(turnInPair.xOffset, 0, arrowPair.tailZ + turnInPair.stemLength / 2)
+                    position: Qt.vector3d(turnInPair.xOffset, 10, arrowPair.tailZ + turnInPair.stemLength / 2)
                     scale: Qt.vector3d(turnInPair.stemWidth, sceneConfig.markingHeight, turnInPair.stemLength)
                     opacity: root.objectOpacity
                     castsShadows: false
@@ -319,7 +316,7 @@ Node {
 
                 Model {
                     source: "#Cube"
-                    position: Qt.vector3d(turnInPair.xOffset + turnInPair.dir * (turnInPair.sideShaftLength / 2), 0, turnInPair.bendZ)
+                    position: Qt.vector3d(turnInPair.xOffset + turnInPair.dir * (turnInPair.sideShaftLength / 2), 10, turnInPair.bendZ)
                     scale: Qt.vector3d(turnInPair.sideShaftLength, sceneConfig.markingHeight, turnInPair.stemWidth)
                     opacity: root.objectOpacity
                     castsShadows: false
@@ -331,11 +328,11 @@ Node {
                     source: "#Cone"
                     position: Qt.vector3d(
                         turnInPair.xOffset + turnInPair.dir * (turnInPair.sideShaftLength + turnInPair.sideHeadLength / 2),
-                        0,
+                        10,
                         turnInPair.bendZ
                     )
-                    eulerRotation: Qt.vector3d(0, turnInPair.isLeft ? 90 : -90, 90)
-                    scale: Qt.vector3d(sceneConfig.markingHeight * 50, turnInPair.sideHeadLength, turnInPair.sideHeadBaseWidth)
+                    eulerRotation: Qt.vector3d(0, turnInPair.isLeft ? -90 : 90, 0)
+                    scale: Qt.vector3d(turnInPair.sideHeadBaseWidth, turnInPair.sideHeadLength, 0.05)
                     opacity: root.objectOpacity
                     castsShadows: false
                     receivesShadows: false
@@ -346,101 +343,101 @@ Node {
     }
 
     // Icons: simplified top-down silhouettes (bike/motor) instead of generic rectangles.
-    Node {
-        id: iconNode
-        visible: root.isRoadIcon
-        position: root.basePosition
-        eulerRotation.y: -root.yawDeg
+    // Node {
+    //     id: iconNode
+    //     visible: root.isRoadIcon
+    //     position: root.basePosition
+    //     eulerRotation.y: -root.yawDeg
 
-        readonly property real iconLength: root.lengthM
-        readonly property real iconWidth: root.widthM
+    //     readonly property real iconLength: root.lengthM
+    //     readonly property real iconWidth: root.widthM
 
-        readonly property real wheelRadius: Math.max(sceneConfig.markingMinWidth * 0.6, Math.min(iconWidth, iconLength) * 0.18)
-        readonly property real stroke: Math.max(sceneConfig.markingMinWidth * 0.25, wheelRadius * 0.35)
+    //     readonly property real wheelRadius: Math.max(sceneConfig.markingMinWidth * 0.6, Math.min(iconWidth, iconLength) * 0.18)
+    //     readonly property real stroke: Math.max(sceneConfig.markingMinWidth * 0.25, wheelRadius * 0.35)
 
-        readonly property real zWheelFront: iconLength * 0.25
-        readonly property real zWheelRear: -iconLength * 0.25
+    //     readonly property real zWheelFront: iconLength * 0.25
+    //     readonly property real zWheelRear: -iconLength * 0.25
 
-        PrincipledMaterial {
-            id: iconMaterial
-            baseColor: root.objectColor
-            emissiveFactor: Qt.vector3d(0.55, 0.55, 0.55)
-            roughness: 0.55
-            metalness: 0.0
-            specularAmount: 0.0
-        }
+    //     PrincipledMaterial {
+    //         id: iconMaterial
+    //         baseColor: root.objectColor
+    //         emissiveFactor: Qt.vector3d(0.55, 0.55, 0.55)
+    //         roughness: 0.55
+    //         metalness: 0.0
+    //         specularAmount: 0.0
+    //     }
 
-        // Wheels
-        Model {
-            source: "#Cylinder"
-            position: Qt.vector3d(0, 0, iconNode.zWheelRear)
-            scale: Qt.vector3d(iconNode.wheelRadius, sceneConfig.markingHeight, iconNode.wheelRadius)
-            opacity: root.objectOpacity
-            castsShadows: false
-            receivesShadows: false
-            materials: [ iconMaterial ]
-        }
+    //     // Wheels
+    //     Model {
+    //         source: "#Cylinder"
+    //         position: Qt.vector3d(0, 0, iconNode.zWheelRear)
+    //         scale: Qt.vector3d(iconNode.wheelRadius, sceneConfig.markingHeight, iconNode.wheelRadius)
+    //         opacity: root.objectOpacity
+    //         castsShadows: false
+    //         receivesShadows: false
+    //         materials: [ iconMaterial ]
+    //     }
 
-        Model {
-            source: "#Cylinder"
-            position: Qt.vector3d(0, 0, iconNode.zWheelFront)
-            scale: Qt.vector3d(iconNode.wheelRadius, sceneConfig.markingHeight, iconNode.wheelRadius)
-            opacity: root.objectOpacity
-            castsShadows: false
-            receivesShadows: false
-            materials: [ iconMaterial ]
-        }
+    //     Model {
+    //         source: "#Cylinder"
+    //         position: Qt.vector3d(0, 0, iconNode.zWheelFront)
+    //         scale: Qt.vector3d(iconNode.wheelRadius, sceneConfig.markingHeight, iconNode.wheelRadius)
+    //         opacity: root.objectOpacity
+    //         castsShadows: false
+    //         receivesShadows: false
+    //         materials: [ iconMaterial ]
+    //     }
 
-        // Bike frame (simple line work)
-        Node {
-            visible: root.isBikeIcon
+    //     // Bike frame (simple line work)
+    //     Node {
+    //         visible: root.isBikeIcon
 
-            Model {
-                source: "#Cube"
-                position: Qt.vector3d(0, 0, 0)
-                scale: Qt.vector3d(iconNode.stroke, sceneConfig.markingHeight, iconNode.iconLength * 0.55)
-                opacity: root.objectOpacity
-                castsShadows: false
-                receivesShadows: false
-                materials: [ iconMaterial ]
-            }
+    //         Model {
+    //             source: "#Cube"
+    //             position: Qt.vector3d(0, 0, 0)
+    //             scale: Qt.vector3d(iconNode.stroke, sceneConfig.markingHeight, iconNode.iconLength * 0.55)
+    //             opacity: root.objectOpacity
+    //             castsShadows: false
+    //             receivesShadows: false
+    //             materials: [ iconMaterial ]
+    //         }
 
-            Model {
-                source: "#Cube"
-                position: Qt.vector3d(iconNode.iconWidth * 0.18, 0, iconNode.zWheelFront * 0.55)
-                scale: Qt.vector3d(iconNode.iconWidth * 0.36, sceneConfig.markingHeight, iconNode.stroke)
-                opacity: root.objectOpacity
-                castsShadows: false
-                receivesShadows: false
-                materials: [ iconMaterial ]
-            }
-        }
+    //         Model {
+    //             source: "#Cube"
+    //             position: Qt.vector3d(iconNode.iconWidth * 0.18, 0, iconNode.zWheelFront * 0.55)
+    //             scale: Qt.vector3d(iconNode.iconWidth * 0.36, sceneConfig.markingHeight, iconNode.stroke)
+    //             opacity: root.objectOpacity
+    //             castsShadows: false
+    //             receivesShadows: false
+    //             materials: [ iconMaterial ]
+    //         }
+    //     }
 
-        // Motor silhouette (wider body block)
-        Node {
-            visible: root.isMotorIcon
+    //     // Motor silhouette (wider body block)
+    //     Node {
+    //         visible: root.isMotorIcon
 
-            Model {
-                source: "#Cube"
-                position: Qt.vector3d(0, 0, 0)
-                scale: Qt.vector3d(iconNode.iconWidth * 0.65, sceneConfig.markingHeight, iconNode.iconLength * 0.35)
-                opacity: root.objectOpacity
-                castsShadows: false
-                receivesShadows: false
-                materials: [ iconMaterial ]
-            }
+    //         Model {
+    //             source: "#Cube"
+    //             position: Qt.vector3d(0, 0, 0)
+    //             scale: Qt.vector3d(iconNode.iconWidth * 0.65, sceneConfig.markingHeight, iconNode.iconLength * 0.35)
+    //             opacity: root.objectOpacity
+    //             castsShadows: false
+    //             receivesShadows: false
+    //             materials: [ iconMaterial ]
+    //         }
 
-            Model {
-                source: "#Cube"
-                position: Qt.vector3d(iconNode.iconWidth * 0.18, 0, iconNode.zWheelFront * 0.45)
-                scale: Qt.vector3d(iconNode.iconWidth * 0.35, sceneConfig.markingHeight, iconNode.stroke)
-                opacity: root.objectOpacity
-                castsShadows: false
-                receivesShadows: false
-                materials: [ iconMaterial ]
-            }
-        }
-    }
+    //         Model {
+    //             source: "#Cube"
+    //             position: Qt.vector3d(iconNode.iconWidth * 0.18, 0, iconNode.zWheelFront * 0.45)
+    //             scale: Qt.vector3d(iconNode.iconWidth * 0.35, sceneConfig.markingHeight, iconNode.stroke)
+    //             opacity: root.objectOpacity
+    //             castsShadows: false
+    //             receivesShadows: false
+    //             materials: [ iconMaterial ]
+    //         }
+    //     }
+    // }
 
     // Other objects: generic marking line/rectangle (style-aware).
     Node {
