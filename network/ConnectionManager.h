@@ -14,6 +14,7 @@
 #include "LaneStateViewModel.h"
 #include "MarkingObjectListModel.h"
 #include "WarningListModel.h"
+#include "FittedLineListModel.h"
 
 namespace network {
 
@@ -30,6 +31,7 @@ namespace network {
         Q_PROPERTY(viewmodels::LaneStateViewModel* laneViewModel READ laneViewModel CONSTANT)
         Q_PROPERTY(viewmodels::MarkingObjectListModel* markingListModel READ markingListModel CONSTANT)
         Q_PROPERTY(viewmodels::WarningListModel* warningListModel READ warningListModel CONSTANT)
+        Q_PROPERTY(viewmodels::FittedLineListModel* fittedLineListModel READ fittedLineListModel CONSTANT)
 
     public:
         enum class State {
@@ -70,6 +72,7 @@ namespace network {
         viewmodels::LaneStateViewModel* laneViewModel() const noexcept { return lane_view_model_; }
         viewmodels::MarkingObjectListModel* markingListModel() const noexcept { return marking_list_model_; }
         viewmodels::WarningListModel* warningListModel() const noexcept { return warning_list_model_; }
+        viewmodels::FittedLineListModel* fittedLineListModel() const noexcept { return fitted_line_list_model_; }
 
         domain::WarningEngine* warningEngine() noexcept { return &warning_engine_; }
         const domain::WarningEngine* warningEngine() const noexcept { return &warning_engine_; }
@@ -87,6 +90,9 @@ namespace network {
         void markingModelUpdated();
         void fittedLinesModelUpdated();
         void warningModelUpdated();
+        // V2 Protocol signals
+        void laneLinesReceived(const laneproto::LaneLines& lines);
+        void roadObjectsReceived(const laneproto::RoadObjects& objects);
 
 
     private:
@@ -101,6 +107,11 @@ namespace network {
         void attemptReconnect();
         void resetReconnectState();
 
+        // V2 Protocol receivers
+        void laneLinesReceivedSlot(const laneproto::LaneLines& lines);
+        void roadObjectsReceivedSlot(const laneproto::RoadObjects& objects);
+
+        // Legacy V1 receivers (not used with V2 protocol)
         void laneSummaryReceived(const laneproto::LaneSummary& summary);
         void markingObjectsReceived(const laneproto::MarkingObjects& objects);
         void laneDetailsReceived(const laneproto::LaneDetails& details);
@@ -133,5 +144,6 @@ namespace network {
         viewmodels::LaneStateViewModel* lane_view_model_{nullptr};
         viewmodels::MarkingObjectListModel* marking_list_model_{nullptr};
         viewmodels::WarningListModel* warning_list_model_{nullptr};
+        viewmodels::FittedLineListModel* fitted_line_list_model_{nullptr};
     };
 }

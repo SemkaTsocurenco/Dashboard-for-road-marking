@@ -1,11 +1,12 @@
 import QtQuick
+import Theme 1.0
 
 Item {
     id: root
 
     anchors.top: parent.top
     anchors.left: parent.left
-    anchors.margins: 20
+    anchors.margins: Theme.spacingXLarge
 
     Component.onCompleted: console.log("WarningPanel loaded, model activeCount=" + (warningModel ? warningModel.activeCount : "n/a"))
 
@@ -13,9 +14,9 @@ Item {
     height: container.height
 
     function severityColor(sev) {
-        if (sev === 2) return "#e74c3c"   // Critical
-        if (sev === 1) return "#f39c12"   // Warning
-        return "#3498db"                  // Info
+        if (sev === 2) return Theme.danger    // Critical
+        if (sev === 1) return Theme.warning   // Warning
+        return Theme.accent                   // Info
     }
 
     function severityIcon(sev) {
@@ -29,9 +30,10 @@ Item {
         width: parent.width
         implicitHeight: column.implicitHeight + 28
         height: implicitHeight
-        color: "#1f1f1f"
-        radius: 12
-        border.color: "#2b2b2b"
+        color: Theme.bgSurface1
+        opacity: Theme.overlayOpacity
+        radius: Theme.radiusXLarge
+        border.color: Theme.border
         border.width: 1
 
         Column {
@@ -39,34 +41,34 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.margins: 14
-            spacing: 12
+            anchors.margins: Theme.spacingMedium
+            spacing: Theme.spacingMedium
             width: parent.width
 
             Row {
-                spacing: 8
+                spacing: Theme.spacingSmall
                 anchors.left: parent.left
                 anchors.right: parent.right
 
                 Text {
                     text: "Warnings"
-                    color: "white"
-                    font.pixelSize: 16
+                    color: Theme.textPrimary
+                    font.pixelSize: Theme.fontLarge
                     font.bold: true
                 }
 
                 Rectangle {
                     height: 20
                     width: 28
-                    radius: 10
-                    color: "#2b2b2b"
-                    border.color: "#3a3a3a"
+                    radius: Theme.radiusLarge
+                    color: Theme.bgSurface2
+                    border.color: Theme.border
 
                     Text {
                         anchors.centerIn: parent
                         text: warningModel ? warningModel.activeCount : 0
-                        color: "#dcdcdc"
-                        font.pixelSize: 12
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSmall
                         font.bold: true
                     }
                 }
@@ -77,15 +79,15 @@ Item {
                 active: warningModel && warningModel.activeCount === 0
                 sourceComponent: Text {
                     text: "No active warnings"
-                    color: "#9a9a9a"
-                    font.pixelSize: 13
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontSmall
                     opacity: 0.8
                 }
             }
 
             Column {
                 width: parent.width
-                spacing: 10
+                spacing: Theme.spacingSmall
 
                 Repeater {
                     model: warningModel
@@ -97,43 +99,43 @@ Item {
 
                         Rectangle {
                             anchors.fill: parent
-                            radius: 10
+                            radius: Theme.radiusLarge
                             color: severityColor(model.severity)
                             opacity: sceneConfig.overlayOpacity
 
-                            border.color: "#0d0d0d"
+                            border.color: Theme.shadowColor
                             border.width: 1
 
                             Row {
                                 anchors.fill: parent
-                                anchors.margins: 12
-                                spacing: 10
+                                anchors.margins: Theme.spacingMedium
+                                spacing: Theme.spacingMedium
 
                                 Rectangle {
                                     width: 28
                                     height: 28
-                                    radius: 8
-                                    color: "#1f1f1f"
-                                    border.color: "#2b2b2b"
+                                    radius: Theme.radiusMedium
+                                    color: Theme.bgSurface1
+                                    border.color: Theme.border
 
                                     Text {
                                         anchors.centerIn: parent
                                         text: severityIcon(model.severity)
-                                        color: "white"
-                                        font.pixelSize: 16
+                                        color: Theme.textPrimary
+                                        font.pixelSize: Theme.fontLarge
                                         font.bold: true
                                     }
                                 }
 
                                 Column {
                                     width: parent.width - 120
-                                    spacing: 4
+                                    spacing: Theme.spacingXSmall
                                     anchors.verticalCenter: parent.verticalCenter
 
                                     Text {
                                         text: model.typeName
-                                        color: "white"
-                                        font.pixelSize: 14
+                                        color: Theme.textPrimary
+                                        font.pixelSize: Theme.fontMedium
                                         font.bold: true
                                         elide: Text.ElideRight
                                         width: parent.width
@@ -141,8 +143,8 @@ Item {
 
                                     Text {
                                         text: model.message
-                                        color: "white"
-                                        font.pixelSize: 12
+                                        color: Theme.textPrimary
+                                        font.pixelSize: Theme.fontSmall
                                         opacity: 0.9
                                         elide: Text.ElideRight
                                         width: parent.width
@@ -150,36 +152,36 @@ Item {
                                 }
 
                                 Column {
-                                    spacing: 6
+                                    spacing: Theme.spacingSmall
                                     anchors.verticalCenter: parent.verticalCenter
 
                                     Rectangle {
-                                        radius: 6
-                                        color: "#1f1f1f"
-                                        border.color: "#2b2b2b"
+                                        radius: Theme.radiusSmall
+                                        color: Theme.bgSurface1
+                                        border.color: Theme.border
                                         height: 20
                                         width: 68
 
                                         Text {
                                             anchors.centerIn: parent
                                             text: (model.distanceMeters !== undefined ? model.distanceMeters.toFixed(1) : "--") + " m"
-                                            color: "white"
-                                            font.pixelSize: 10
+                                            color: Theme.textPrimary
+                                            font.pixelSize: Theme.fontXSmall
                                         }
                                     }
 
                                     Rectangle {
-                                        radius: 6
-                                        color: "#1f1f1f"
-                                        border.color: "#2b2b2b"
+                                        radius: Theme.radiusSmall
+                                        color: Theme.bgSurface1
+                                        border.color: Theme.border
                                         height: 20
                                         width: 68
 
                                         Text {
                                             anchors.centerIn: parent
                                             text: model.severityName || "Severity"
-                                            color: "white"
-                                            font.pixelSize: 10
+                                            color: Theme.textPrimary
+                                            font.pixelSize: Theme.fontXSmall
                                         }
                                     }
                                 }

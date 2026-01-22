@@ -15,16 +15,8 @@ namespace viewmodels {
         objects_.clear();
         objects_.reserve(model.size());
 
+
         for (const auto& obj : model) {
-            LOG_DEBUG << "MarkingObject from domain: x=" << obj.xMeters()
-                     << "y=" << obj.yMeters()
-                     << "length=" << obj.lengthMeters()
-                     << "width=" << obj.widthMeters()
-                     << "yaw=" << obj.yawDeg()
-                     << "confidence=" << obj.confidence()
-                     << "valid=" << obj.isValid()
-                     << "color=" << static_cast<int>(obj.lineColor())
-                     << "style=" << static_cast<int>(obj.lineStyle());
             objects_.push_back(obj);
         }
 
@@ -35,6 +27,7 @@ namespace viewmodels {
 
         endResetModel();
         emit countChanged(static_cast<int>(objects_.size()));
+
     }
 
     void MarkingObjectListModel::clear() {
@@ -112,6 +105,21 @@ namespace viewmodels {
             case LineStyleRole:
                 return lineStyleToString(obj.lineStyle());
 
+            case CenterXPixelsRole:
+                return obj.centerXPixels();
+
+            case CenterYPixelsRole:
+                return obj.centerYPixels();
+
+            case WidthPixelsRole:
+                return obj.widthPixels();
+
+            case LengthPixelsRole:
+                return obj.lengthPixels();
+
+            case HasPixelCoordsRole:
+                return obj.hasPixelCoords();
+
             default:
                 return {};
         }
@@ -133,7 +141,12 @@ namespace viewmodels {
             {AreaRole, "area"},
             {DistanceRole, "distance"},
             {LineColorRole, "lineColor"},
-            {LineStyleRole, "lineStyle"}
+            {LineStyleRole, "lineStyle"},
+            {CenterXPixelsRole, "centerXPixels"},
+            {CenterYPixelsRole, "centerYPixels"},
+            {WidthPixelsRole, "widthPixels"},
+            {LengthPixelsRole, "lengthPixels"},
+            {HasPixelCoordsRole, "hasPixelCoords"}
         };
     }
 

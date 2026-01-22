@@ -65,6 +65,7 @@ void DashboardWidget::setAppController(app::AppController* controller) {
     context->setContextProperty("laneViewModel", controller->laneViewModel());
     context->setContextProperty("markingModel", controller->markingListModel());
     context->setContextProperty("warningModel", controller->warningListModel());
+    context->setContextProperty("fittedLinesModel", controller->fittedLineListModel());
 
     // Load scene configuration from file
     config::SceneConfig sceneConfig = config::SceneConfig::loadFromFile("config/scene_config.json");
@@ -75,6 +76,10 @@ void DashboardWidget::setAppController(app::AppController* controller) {
     const QString qmlPath = QLibraryInfo::path(QLibraryInfo::QmlImportsPath);
     if (!quickWidget_->engine()->importPathList().contains(qmlPath)) {
         quickWidget_->engine()->addImportPath(qmlPath);
+    }
+    const QString resourceQmlPath = QStringLiteral("qrc:/qml");
+    if (!quickWidget_->engine()->importPathList().contains(resourceQmlPath)) {
+        quickWidget_->engine()->addImportPath(resourceQmlPath);
     }
 
     LOG_INFO << "Loading QML Dashboard.qml from resources. Import paths:";

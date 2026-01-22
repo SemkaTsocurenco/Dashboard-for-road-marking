@@ -96,11 +96,9 @@ namespace laneproto {
         }
 
         h.msg_type = static_cast<MsgType>(header_buf_[1]);
-        if (h.msg_type != MsgType::MarkingObjects &&
-            h.msg_type != MsgType::LaneSummary &&
-            h.msg_type != MsgType::LaneDetails &&
-            h.msg_type != MsgType::MarkingObjectsEx &&
-            h.msg_type != MsgType::FittedLines){
+        // V2 Protocol: Only LaneLines (0x01) and RoadObjects (0x02) are valid
+        if (h.msg_type != MsgType::LaneLines &&
+            h.msg_type != MsgType::RoadObjects) {
             ParseError err;
             err.code = ParseErrorCode::UnknownMsgType;
             err.message = "Unknown MSG_TYPE: " + std::to_string(
@@ -520,6 +518,172 @@ namespace laneproto {
         handler_.onFittedLines(msg);
     }
 
+    // ============================================
+    // V2 Protocol Handlers
+    // ============================================
+
+    void ProtoParser::handleLaneLines() {
+        if (payload_buf_.size() != current_header_.payload_len) {
+            ParseError err;
+            err.code = ParseErrorCode::FittedLinesFormat;
+            err.message = "Payload size mismatch for LaneLines";
+            handler_.onParseError(err);
+            return;
+        }
+        if (payload_buf_.empty()) {
+            ParseError err;
+            err.code = ParseErrorCode::FittedLinesFormat;
+            err.message = "Empty payload for LaneLines";
+            handler_.onParseError(err);
+            return;
+        }
+
+        std::uint8_t num_lines = payload_buf_[0];
+
+        // V2: Each line is 71 bytes
+        const std::size_t line_size = 71;
+        std::size_t expected_len = 1u + static_cast<std::size_t>(num_lines) * line_size;
+        if (current_header_.payload_len != expected_len) {
+            ParseError err;
+            err.code = ParseErrorCode::FittedLinesFormat;
+            err.message = "LaneLines LEN mismatch: expected "
+                + std::to_string(expected_len) + ", got "
+                + std::to_string(current_header_.payload_len);
+            handler_.onParseError(err);
+            return;
+        }
+
+        LaneLines msg;
+        msg.timestamp_ms = current_header_.timestamp_ms;
+        msg.seq = current_header_.seq;
+        msg.lines.clear();
+        msg.lines.reserve(num_lines);
+
+        std::size_t offset = 1;
+
+        for (std::uint8_t i = 0; i < num_lines; ++i) {
+            if (offset + line_size > payload_buf_.size()) {
+                ParseError err;
+                err.code = ParseErrorCode::FittedLinesFormat;
+                err.message = "Truncated LaneLine in payload";
+                handler_.onParseError(err);
+                return;
+            }
+
+            const std::uint8_t* p = payload_buf_.data() + offset;
+            LaneLine line;
+
+            // V2 format: side(1), style(1), color(1), poly_a/b/c(12), x_m/y_m(8),
+            // 3 points meters(24), 3 points pixels(24) = 71 bytes
+            line.side = static_cast<LineSide>(p[0]);
+            line.style = decode_line_style(p[1]);
+            line.color = decode_line_color(p[2]);
+
+            line.poly_a = read_le_float32(p + 3);
+            line.poly_b = read_le_float32(p + 7);
+            line.poly_c = read_le_float32(p + 11);
+
+            line.center_x_m = read_le_float32(p + 15);
+            line.center_y_m = read_le_float32(p + 19);
+
+            // 3 points in meters (top, middle, bottom)
+            line.points_m[0].x_m = read_le_float32(p + 23);
+            line.points_m[0].y_m = read_le_float32(p + 27);
+            line.points_m[1].x_m = read_le_float32(p + 31);
+            line.points_m[1].y_m = read_le_float32(p + 35);
+            line.points_m[2].x_m = read_le_float32(p + 39);
+            line.points_m[2].y_m = read_le_float32(p + 43);
+
+            // 3 points in pixels (for overlay/debug)
+            line.points_px[0].x_px = read_le_float32(p + 47);
+            line.points_px[0].y_px = read_le_float32(p + 51);
+            line.points_px[1].x_px = read_le_float32(p + 55);
+            line.points_px[1].y_px = read_le_float32(p + 59);
+            line.points_px[2].x_px = read_le_float32(p + 63);
+            line.points_px[2].y_px = read_le_float32(p + 67);
+
+            msg.lines.push_back(line);
+            offset += line_size;
+        }
+
+        handler_.onLaneLines(msg);
+    }
+
+    void ProtoParser::handleRoadObjects() {
+        if (payload_buf_.size() != current_header_.payload_len) {
+            ParseError err;
+            err.code = ParseErrorCode::MarkingFormat;
+            err.message = "Payload size mismatch for RoadObjects";
+            handler_.onParseError(err);
+            return;
+        }
+        if (payload_buf_.empty()) {
+            ParseError err;
+            err.code = ParseErrorCode::MarkingFormat;
+            err.message = "Empty payload for RoadObjects";
+            handler_.onParseError(err);
+            return;
+        }
+
+        std::uint8_t num_objects = payload_buf_[0];
+
+        // V2: Each object is 41 bytes (with pixel coordinates)
+        const std::size_t object_size = 41;
+        std::size_t expected_len = 1u + static_cast<std::size_t>(num_objects) * object_size;
+        if (current_header_.payload_len != expected_len) {
+            ParseError err;
+            err.code = ParseErrorCode::MarkingFormat;
+            err.message = "RoadObjects LEN mismatch: expected "
+                + std::to_string(expected_len) + ", got "
+                + std::to_string(current_header_.payload_len);
+            handler_.onParseError(err);
+            return;
+        }
+
+        RoadObjects msg;
+        msg.timestamp_ms = current_header_.timestamp_ms;
+        msg.seq = current_header_.seq;
+        msg.objects.clear();
+        msg.objects.reserve(num_objects);
+
+        std::size_t offset = 1;
+
+        for (std::uint8_t i = 0; i < num_objects; ++i) {
+            if (offset + object_size > payload_buf_.size()) {
+                ParseError err;
+                err.code = ParseErrorCode::MarkingFormat;
+                err.message = "Truncated RoadObject in payload";
+                handler_.onParseError(err);
+                return;
+            }
+
+            const std::uint8_t* p = payload_buf_.data() + offset;
+            RoadObject obj;
+
+            // V2 format: class_id(1), center_x(4), center_y(4), length(4), width(4),
+            // yaw(4), center_x_px(4), center_y_px(4), width_px(4), length_px(4),
+            // confidence(1), flags(1), reserved(2) = 41 bytes
+            obj.class_id = static_cast<MarkingClassId>(p[0]);
+            obj.center_x_m = read_le_float32(p + 1);
+            obj.center_y_m = read_le_float32(p + 5);
+            obj.length_m = read_le_float32(p + 9);
+            obj.width_m = read_le_float32(p + 13);
+            obj.yaw_rad = read_le_float32(p + 17);
+            obj.center_x_px = read_le_float32(p + 21);
+            obj.center_y_px = read_le_float32(p + 25);
+            obj.width_px = read_le_float32(p + 29);
+            obj.length_px = read_le_float32(p + 33);
+            obj.confidence = p[37];
+            obj.flags = p[38];
+            obj.reserved = read_le_u16(p + 39);
+
+            msg.objects.push_back(obj);
+            offset += object_size;
+        }
+
+        handler_.onRoadObjects(msg);
+    }
+
     void ProtoParser::feed(const std::vector<std::uint8_t>& data) {
         feed(data.data(), data.size());
     }
@@ -565,21 +729,13 @@ namespace laneproto {
                             break;
                         }
 
+                        // V2 Protocol message dispatch
                         switch (current_header_.msg_type) {
-                            case MsgType::LaneSummary:
-                                handleLaneSummary();
+                            case MsgType::LaneLines:
+                                handleLaneLines();
                                 break;
-                            case MsgType::MarkingObjects:
-                                handleMarkingObjects();
-                                break;
-                            case MsgType::LaneDetails:
-                                handleLaneDetails();
-                                break;
-                            case MsgType::MarkingObjectsEx:
-                                handleMarkingObjectsEx();
-                                break;
-                            case MsgType::FittedLines:
-                                handleFittedLines();
+                            case MsgType::RoadObjects:
+                                handleRoadObjects();
                                 break;
                         }
                         reset();

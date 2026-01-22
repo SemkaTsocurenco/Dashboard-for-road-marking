@@ -79,10 +79,18 @@ namespace video {
         void drawWarnings(QPainter& painter, const QSize& imageSize);
 
         void drawMarkingObjectWithContour(QPainter& painter, const QSize& imageSize,
+                                         int classId,
                                          float x, float y, float length, float width,
                                          float yaw, const QString& className,
                                          const QColor& color, bool isCrosswalk, bool isArrow,
-                                         float distance);
+                                         float distance,
+                                         bool hasPixelCoords = false,
+                                         float centerXPx = 0.0f, float centerYPx = 0.0f,
+                                         float widthPx = 0.0f, float lengthPx = 0.0f);
+
+        // Arrow drawing helper methods (matching detector style)
+        void drawArrowShape(QPainter& painter, int classId, float widthPx, float lengthPx,
+                           const QColor& color);
 
         QPointF worldToImage(float x, float y, const QSize& imageSize) const;
         QColor getColorForClassId(laneproto::MarkingClassId classId, laneproto::LineColor lineColor) const;

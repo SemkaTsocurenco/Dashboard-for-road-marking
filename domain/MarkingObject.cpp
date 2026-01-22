@@ -18,6 +18,27 @@ namespace domain {
         line_style_ = msg.line_style;
     }
 
+    void MarkingObject::updateFromProtoV2(const laneproto::RoadObject& obj) noexcept {
+        class_id_ = obj.class_id;
+        x_m_ = obj.center_x_m;
+        y_m_ = obj.center_y_m;
+        length_m_ = obj.length_m;
+        width_m_ = obj.width_m;
+        // V2 uses radians, convert to degrees for compatibility
+        yaw_deg_ = obj.yaw_rad * (180.0f / 3.14159265358979323846f);
+        confidence_ = obj.confidence;
+        flags_ = obj.flags;
+        // V2 doesn't have line_color/line_style for road objects
+        line_color_ = laneproto::LineColor::Unknown;
+        line_style_ = laneproto::LineStyle::Unknown;
+
+        // Pixel coordinates for dashboard rendering
+        center_x_px_ = obj.center_x_px;
+        center_y_px_ = obj.center_y_px;
+        width_px_ = obj.width_px;
+        length_px_ = obj.length_px;
+    }
+
     laneproto::MarkingClassId MarkingObject::classId() const noexcept {
         return class_id_;
     }
@@ -107,6 +128,22 @@ namespace domain {
         for (const auto& obj_proto : msg.objects) {
             MarkingObject obj;
             obj.updateFromProto(obj_proto);
+            objects_.push_back(obj);
+        }
+
+        valid_ = true;
+    }
+
+    void MarkingObjectModel::updateFromProtoV2(const laneproto::RoadObjects& msg) {
+        timestamp_ms_ = msg.timestamp_ms;
+        seq_ = msg.seq;
+
+        objects_.clear();
+        objects_.reserve(msg.objects.size());
+
+        for (const auto& obj_proto : msg.objects) {
+            MarkingObject obj;
+            obj.updateFromProtoV2(obj_proto);
             objects_.push_back(obj);
         }
 

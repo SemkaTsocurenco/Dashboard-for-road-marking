@@ -27,7 +27,13 @@ namespace viewmodels {
             AreaRole,
             DistanceRole,  // Distance from vehicle (calculated from x, y)
             LineColorRole,
-            LineStyleRole
+            LineStyleRole,
+            // Pixel coordinates for direct rendering
+            CenterXPixelsRole,
+            CenterYPixelsRole,
+            WidthPixelsRole,
+            LengthPixelsRole,
+            HasPixelCoordsRole
         };
 
         explicit MarkingObjectListModel(QObject* parent = nullptr);

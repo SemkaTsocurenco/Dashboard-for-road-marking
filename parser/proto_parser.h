@@ -15,12 +15,16 @@ namespace laneproto {
     constexpr std::uint8_t kSyncByte = config::ProtocolConfig::SYNC_BYTE;
     constexpr std::size_t kMaxPayloadLength = config::ProtocolConfig::MAX_PAYLOAD_LENGTH;
 
+    // V2 Protocol Message Types
     enum class MsgType : std::uint8_t {
-        LaneSummary     = 0x01,
-        MarkingObjects  = 0x02,
-        LaneDetails     = 0x03,
-        MarkingObjectsEx= 0x04,
-        FittedLines     = 0x05,
+        LaneLines       = 0x01,  // V2: Lane lines with polynomials and points in meters
+        RoadObjects     = 0x02,  // V2: Road marking objects (arrows, crosswalks, etc.)
+        // Legacy V1 types (for reference, no longer used)
+        // LaneSummary     = 0x01,
+        // MarkingObjects  = 0x02,
+        // LaneDetails     = 0x03,
+        // MarkingObjectsEx= 0x04,
+        // FittedLines     = 0x05,
     };
 
     enum class LaneType : std::uint8_t {
@@ -170,15 +174,92 @@ namespace laneproto {
         std::vector<FittedLine> lines;
     };
 
+    // ============================================
+    // V2 Protocol Data Structures
+    // ============================================
+
+    // V2: Point in meters (real-world coordinates)
+    struct PointMeters {
+        float x_m = 0.0f;
+        float y_m = 0.0f;
+    };
+
+    // V2: Point in pixels (image coordinates)
+    struct PointPixels {
+        float x_px = 0.0f;
+        float y_px = 0.0f;
+    };
+
+    // V2: Lane line with polynomial coefficients and 3 points
+    // Structure size: 71 bytes per line
+    struct LaneLine {
+        LineSide side = LineSide::Unknown;      // 0=unknown, 1=left, 2=right, 3=center
+        LineStyle style = LineStyle::Unknown;   // 0=unknown, 1=solid, 2=dashed, 3=double
+        LineColor color = LineColor::Unknown;   // 0=unknown, 1=white, 2=yellow, 3=red
+
+        // Polynomial coefficients: x = a*y² + b*y + c
+        float poly_a = 0.0f;
+        float poly_b = 0.0f;
+        float poly_c = 0.0f;
+
+        // Center of line in meters
+        float center_x_m = 0.0f;
+        float center_y_m = 0.0f;
+
+        // Three points in meters (top, middle, bottom)
+        std::array<PointMeters, 3> points_m{};
+
+        // Three points in pixels (for overlay/debug)
+        std::array<PointPixels, 3> points_px{};
+    };
+
+    // V2: Lane lines message
+    struct LaneLines {
+        TimestampMs timestamp_ms{};
+        SequenceNumber seq{};
+        std::vector<LaneLine> lines;
+    };
+
+    // V2: Road object (arrows, crosswalks, stop lines, etc.)
+    // Structure size: 41 bytes per object
+    struct RoadObject {
+        MarkingClassId class_id = MarkingClassId::Unknown;
+        float center_x_m = 0.0f;    // Center X in meters
+        float center_y_m = 0.0f;    // Center Y in meters (forward from camera)
+        float length_m = 0.0f;      // Length in meters
+        float width_m = 0.0f;       // Width in meters
+        float yaw_rad = 0.0f;       // Orientation in radians (0 = forward)
+        float center_x_px = 0.0f;   // Center X in pixels (OpenCV coords)
+        float center_y_px = 0.0f;   // Center Y in pixels (OpenCV coords)
+        float width_px = 0.0f;      // Width in pixels
+        float length_px = 0.0f;     // Length in pixels
+        std::uint8_t confidence = 0; // Detection confidence (0-255)
+        std::uint8_t flags = 0;      // State flags (bitmask)
+        std::uint16_t reserved = 0;  // Reserved for future use
+    };
+
+    // V2: Road objects message
+    struct RoadObjects {
+        TimestampMs timestamp_ms{};
+        SequenceNumber seq{};
+        std::vector<RoadObject> objects;
+    };
+
     class IMessageHandler {
     public:
         virtual ~IMessageHandler() = default;
 
+        // V2 Protocol handlers
+        virtual void onLaneLines(const LaneLines& msg) = 0;
+        virtual void onRoadObjects(const RoadObjects& msg) = 0;
+
+        // Legacy V1 handlers (kept for compatibility, implementations can be empty)
         virtual void onLaneSummary(const LaneSummary& msg) = 0;
         virtual void onMarkingObjects(const MarkingObjects& msg) = 0;
         virtual void onLaneDetails(const LaneDetails& msg) = 0;
         virtual void onMarkingObjectsEx(const MarkingObjects& msg) = 0;
         virtual void onFittedLines(const FittedLines& msg) = 0;
+
         virtual void onParseError(const ParseError& error) = 0;
     };
 
@@ -206,7 +287,7 @@ namespace laneproto {
 
         struct FrameHeader {
             std::uint8_t  ver         = 0x00;
-            MsgType       msg_type    = MsgType::LaneSummary;
+            MsgType       msg_type    = MsgType::LaneLines;  // V2 default
             SequenceNumber seq        = 0;
             TimestampMs   timestamp_ms{};
             std::uint16_t payload_len = 0;
@@ -231,6 +312,12 @@ namespace laneproto {
 
         bool parseHeaderFromBuffer();
         bool verifyCrc();
+
+        // V2 Protocol handlers
+        void handleLaneLines();
+        void handleRoadObjects();
+
+        // Legacy V1 handlers (not used in V2)
         void handleMarkingObjects();
         void handleMarkingObjectsEx();
         void handleLaneSummary();

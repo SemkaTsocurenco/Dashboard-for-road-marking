@@ -19,11 +19,18 @@ namespace domain {
         laneproto::LineColor line_color_{laneproto::LineColor::Unknown};
         laneproto::LineStyle line_style_{laneproto::LineStyle::Unknown};
 
+        // Pixel coordinates for dashboard rendering
+        float center_x_px_ = 0.0f;
+        float center_y_px_ = 0.0f;
+        float width_px_ = 0.0f;
+        float length_px_ = 0.0f;
+
     public:
         MarkingObject() noexcept = default;
         ~MarkingObject() noexcept = default;
 
         void updateFromProto(const laneproto::MarkingObject& msg) noexcept;
+        void updateFromProtoV2(const laneproto::RoadObject& obj) noexcept;
 
         laneproto::MarkingClassId classId() const noexcept;
         float xMeters() const noexcept;
@@ -35,6 +42,13 @@ namespace domain {
         std::uint8_t rawFlags() const noexcept;
         laneproto::LineColor lineColor() const noexcept { return line_color_; }
         laneproto::LineStyle lineStyle() const noexcept { return line_style_; }
+
+        // Pixel coordinate accessors
+        float centerXPixels() const noexcept { return center_x_px_; }
+        float centerYPixels() const noexcept { return center_y_px_; }
+        float widthPixels() const noexcept { return width_px_; }
+        float lengthPixels() const noexcept { return length_px_; }
+        bool hasPixelCoords() const noexcept { return width_px_ > 0.0f && length_px_ > 0.0f; }
 
         bool isCrosswalk() const noexcept;
         bool isArrow() const noexcept;
@@ -56,8 +70,9 @@ namespace domain {
     public:
         MarkingObjectModel() noexcept = default;
         ~MarkingObjectModel() noexcept = default;
-        
+
         void updateFromProto(const laneproto::MarkingObjects& msg);
+        void updateFromProtoV2(const laneproto::RoadObjects& msg);
 
         std::size_t size() const noexcept;
         bool empty() const noexcept;

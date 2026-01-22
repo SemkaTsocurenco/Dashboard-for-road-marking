@@ -8,7 +8,17 @@ Item {
 
     // Movement speed
     property real moveSpeed: 1.0
-    property real rotateSpeed: 2.0
+    property real rotateSpeed: 3.0
+    property bool moveForward: false
+    property bool moveBackward: false
+    property bool moveLeft: false
+    property bool moveRight: false
+    property bool moveUp: false
+    property bool moveDown: false
+    property bool rotateUp: false
+    property bool rotateDown: false
+    property bool rotateLeft: false
+    property bool rotateRight: false
 
     // Camera state display
     property string positionText: "Pos: (" + camera.position.x.toFixed(1) + ", " +
@@ -19,117 +29,177 @@ Item {
                                             camera.eulerRotation.z.toFixed(1) + "°)"
 
     focus: true
+    onActiveFocusChanged: {
+        if (!activeFocus) {
+            moveForward = false;
+            moveBackward = false;
+            moveLeft = false;
+            moveRight = false;
+            moveUp = false;
+            moveDown = false;
+            rotateUp = false;
+            rotateDown = false;
+            rotateLeft = false;
+            rotateRight = false;
+        }
+    }
 
-    Keys.onPressed: (event) => {
-        var forward = Qt.vector3d(0, 0, -40);
-        var right = Qt.vector3d(40, 0, 0);
-        var up = Qt.vector3d(0, 40, 0);
-
-        // Rotate vectors based on camera rotation
-        var yaw = camera.eulerRotation.y * Math.PI / 180;
-        var cosY = Math.cos(yaw);
-        var sinY = Math.sin(yaw);
-
-        var rotatedForward = Qt.vector3d(
-            forward.x * cosY - forward.z * sinY,
-            0,
-            forward.x * sinY + forward.z * cosY
-        );
-
-        var rotatedRight = Qt.vector3d(
-            right.x * cosY - right.z * sinY,
-            0,
-            right.x * sinY + right.z * cosY
-        );
-
-        switch(event.key) {
+    function setKeyState(key, isDown) {
+        switch (key) {
             case Qt.Key_W:
-                camera.position = Qt.vector3d(
-                    camera.position.x + rotatedForward.x * moveSpeed,
-                    camera.position.y + rotatedForward.y * moveSpeed,
-                    camera.position.z + rotatedForward.z * moveSpeed
-                );
-                event.accepted = true;
-                break;
+                moveForward = isDown;
+                return true;
             case Qt.Key_S:
-                camera.position = Qt.vector3d(
-                    camera.position.x - rotatedForward.x * moveSpeed,
-                    camera.position.y - rotatedForward.y * moveSpeed,
-                    camera.position.z - rotatedForward.z * moveSpeed
-                );
-                event.accepted = true;
-                break;
+                moveBackward = isDown;
+                return true;
             case Qt.Key_A:
-                camera.position = Qt.vector3d(
-                    camera.position.x - rotatedRight.x * moveSpeed,
-                    camera.position.y - rotatedRight.y * moveSpeed,
-                    camera.position.z - rotatedRight.z * moveSpeed
-                );
-                event.accepted = true;
-                break;
+                moveLeft = isDown;
+                return true;
             case Qt.Key_D:
-                camera.position = Qt.vector3d(
-                    camera.position.x + rotatedRight.x * moveSpeed,
-                    camera.position.y + rotatedRight.y * moveSpeed,
-                    camera.position.z + rotatedRight.z * moveSpeed
-                );
-                event.accepted = true;
-                break;
+                moveRight = isDown;
+                return true;
             case Qt.Key_Space:
-                camera.position = Qt.vector3d(
-                    camera.position.x,
-                    camera.position.y + moveSpeed,
-                    camera.position.z
-                );
-                event.accepted = true;
-                break;
+                moveUp = isDown;
+                return true;
             case Qt.Key_Shift:
-                camera.position = Qt.vector3d(
-                    camera.position.x,
-                    camera.position.y - moveSpeed,
-                    camera.position.z
-                );
-                event.accepted = true;
-                break;
+                moveDown = isDown;
+                return true;
             case Qt.Key_Up:
-                camera.eulerRotation = Qt.vector3d(
-                    camera.eulerRotation.x - rotateSpeed,
-                    camera.eulerRotation.y,
-                    camera.eulerRotation.z
-                );
-                event.accepted = true;
-                break;
+                rotateUp = isDown;
+                return true;
             case Qt.Key_Down:
-                camera.eulerRotation = Qt.vector3d(
-                    camera.eulerRotation.x + rotateSpeed,
-                    camera.eulerRotation.y,
-                    camera.eulerRotation.z
-                );
-                event.accepted = true;
-                break;
+                rotateDown = isDown;
+                return true;
             case Qt.Key_Left:
-                camera.eulerRotation = Qt.vector3d(
-                    camera.eulerRotation.x,
-                    camera.eulerRotation.y - rotateSpeed,
-                    camera.eulerRotation.z
-                );
-                event.accepted = true;
-                break;
+                rotateLeft = isDown;
+                return true;
             case Qt.Key_Right:
-                camera.eulerRotation = Qt.vector3d(
-                    camera.eulerRotation.x,
-                    camera.eulerRotation.y + rotateSpeed,
-                    camera.eulerRotation.z
-                );
-                event.accepted = true;
-                break;
-            case Qt.Key_R:
-                // Reset to default position
-                camera.position = Qt.vector3d(0, 15, -25);
-                camera.eulerRotation = Qt.vector3d(-35, 0, 0);
-                event.accepted = true;
-                break;
+                rotateRight = isDown;
+                return true;
         }
 
+        return false;
+    }
+
+    Keys.onPressed: (event) => {
+        if (event.isAutoRepeat) {
+            return;
+        }
+
+        if (setKeyState(event.key, true)) {
+            event.accepted = true;
+            return;
+        }
+
+        if (event.key === Qt.Key_R) {
+            // Reset to default position
+            camera.position = Qt.vector3d(0, 15, -25);
+            camera.eulerRotation = Qt.vector3d(-35, 0, 0);
+            event.accepted = true;
+        }
+    }
+
+    Keys.onReleased: (event) => {
+        if (event.isAutoRepeat) {
+            return;
+        }
+
+        if (setKeyState(event.key, false)) {
+            event.accepted = true;
+        }
+    }
+
+    Timer {
+        id: movementTimer
+        interval: 16
+        repeat: true
+        running: true
+        triggeredOnStart: true
+
+        onTriggered: {
+            var scale = interval / 33.0;
+            var moveStep = 40 * moveSpeed * scale;
+            var verticalStep = (moveSpeed + 50) * scale;
+
+            // Rotate vectors based on camera rotation (right-handed, Y-up).
+            var yaw = camera.eulerRotation.y * Math.PI / 180;
+            var cosY = Math.cos(yaw);
+            var sinY = Math.sin(yaw);
+
+            var forward = Qt.vector3d(0, 0, -moveStep);
+            var right = Qt.vector3d(moveStep, 0, 0);
+
+            var rotatedForward = Qt.vector3d(
+                forward.x * cosY + forward.z * sinY,
+                0,
+                -forward.x * sinY + forward.z * cosY
+            );
+
+            var rotatedRight = Qt.vector3d(
+                right.x * cosY + right.z * sinY,
+                0,
+                -right.x * sinY + right.z * cosY
+            );
+
+            var dx = 0;
+            var dy = 0;
+            var dz = 0;
+
+            if (moveForward) {
+                dx += rotatedForward.x;
+                dz += rotatedForward.z;
+            }
+            if (moveBackward) {
+                dx -= rotatedForward.x;
+                dz -= rotatedForward.z;
+            }
+            if (moveLeft) {
+                dx -= rotatedRight.x;
+                dz -= rotatedRight.z;
+            }
+            if (moveRight) {
+                dx += rotatedRight.x;
+                dz += rotatedRight.z;
+            }
+            if (moveUp) {
+                dy += verticalStep;
+            }
+            if (moveDown) {
+                dy -= verticalStep;
+            }
+
+            if (dx || dy || dz) {
+                camera.position = Qt.vector3d(
+                    camera.position.x + dx,
+                    camera.position.y + dy,
+                    camera.position.z + dz
+                );
+            }
+
+            var rotateStep = rotateSpeed * scale;
+            var pitchDelta = 0;
+            var yawDelta = 0;
+
+            if (rotateUp) {
+                pitchDelta += rotateStep;
+            }
+            if (rotateDown) {
+                pitchDelta -= rotateStep;
+            }
+            if (rotateLeft) {
+                yawDelta += rotateStep;
+            }
+            if (rotateRight) {
+                yawDelta -= rotateStep;
+            }
+
+            if (pitchDelta || yawDelta) {
+                camera.eulerRotation = Qt.vector3d(
+                    camera.eulerRotation.x + pitchDelta,
+                    camera.eulerRotation.y + yawDelta,
+                    camera.eulerRotation.z
+                );
+            }
+        }
     }
 }

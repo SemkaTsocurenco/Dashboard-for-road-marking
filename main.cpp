@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QCommandLineOption>
+#include <QFile>
 #include "AppController.hpp"
 #include "MainWindow.hpp"
 #include "LoggerMacros.hpp"
@@ -9,8 +10,18 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
+    // Load dark theme from resources
+    QFile styleFile(":/styles/dark.qss");
+    if (styleFile.open(QFile::ReadOnly)) {
+        QString styleSheet = QString::fromUtf8(styleFile.readAll());
+        app.setStyleSheet(styleSheet);
+        styleFile.close();
+    } else {
+        qWarning() << "Failed to load stylesheet from resources";
+    }
+
     // Initialize logger
-    logger::Logger::instance().set_level(logger::LogLevel::Fatal);
+    logger::Logger::instance().set_level(logger::LogLevel::Warn);
     LOG_INFO << "=== Dashboard Application Starting ===";
 
     // Parse CLI overrides

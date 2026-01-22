@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick3D
+import Theme 1.0
 
 Item {
     id: root
@@ -18,9 +19,9 @@ Item {
 
         environment: SceneEnvironment {
             backgroundMode: SceneEnvironment.Color
-            clearColor: "#1a1a1a"
+            clearColor: "#0a0c0f"
             antialiasingMode: SceneEnvironment.MSAA
-            antialiasingQuality: SceneEnvironment.High
+            antialiasingQuality: SceneEnvironment.VeryHigh
         }
 
         CarScene {
@@ -42,39 +43,42 @@ Item {
         z: 10
 
         // Camera position display
-        Rectangle {
-            anchors.top: parent.top
-            anchors.right: parent.right
-            anchors.margins: 10
-            width: sceneConfig.cameraInfoWidth
-            height: sceneConfig.cameraInfoHeight
-            color: "#80000000"
-            radius: 5
+        // Rectangle {
+        //     anchors.top: parent.top
+        //     anchors.right: parent.right
+        //     anchors.margins: Theme.spacingXLarge
+        //     width: sceneConfig.cameraInfoWidth
+        //     height: sceneConfig.cameraInfoHeight
+        //     color: Theme.bgSurface1
+        //     opacity: Theme.overlayOpacity
+        //     radius: Theme.radiusMedium
+        //     border.color: Theme.border
+        //     border.width: 1
 
-            Column {
-                anchors.fill: parent
-                anchors.margins: 10
-                spacing: 5
+        //     Column {
+        //         anchors.fill: parent
+        //         anchors.margins: Theme.spacingMedium
+        //         spacing: Theme.spacingSmall
 
-                Text {
-                    text: cameraController.positionText
-                    color: "#00ff00"
-                    font.pixelSize: 14
-                    font.family: "monospace"
-                }
-                Text {
-                    text: cameraController.rotationText
-                    color: "#00ff00"
-                    font.pixelSize: 14
-                    font.family: "monospace"
-                }
-                Text {
-                    text: "WASD+Space/Shift: move | Arrows: rotate | R: reset"
-                    color: "#ffff00"
-                    font.pixelSize: 10
-                }
-            }
-        }
+        //         Text {
+        //             text: cameraController.positionText
+        //             color: Theme.textSecondary
+        //             font.pixelSize: Theme.fontMedium
+        //             font.family: Theme.fontFamilyMono
+        //         }
+        //         Text {
+        //             text: cameraController.rotationText
+        //             color: Theme.textSecondary
+        //             font.pixelSize: Theme.fontMedium
+        //             font.family: Theme.fontFamilyMono
+        //         }
+        //         Text {
+        //             text: "WASD+Space/Shift: move | Arrows: rotate | R: reset"
+        //             color: Theme.textDisabled
+        //             font.pixelSize: Theme.fontXSmall
+        //         }
+        //     }
+        // }
 
         WarningPanel {
             anchors.top: parent.top

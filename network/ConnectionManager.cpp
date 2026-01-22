@@ -1,10 +1,53 @@
 #include "ConnectionManager.h"
+#include "FittedLineListModel.h"
 #include "LoggerMacros.hpp"
 #include "proto_parser.h"
 #include "AppConfig.hpp"
 #include <qnamespace.h>
 #include <qobjectdefs.h>
 #include <QTimer>
+#include <cmath>
+
+namespace {
+    laneproto::LaneType laneTypeFromStyle(laneproto::LineStyle style) {
+        switch (style) {
+            case laneproto::LineStyle::Solid:
+                return laneproto::LaneType::Solid;
+            case laneproto::LineStyle::Dashed:
+                return laneproto::LaneType::Dashed;
+            case laneproto::LineStyle::Double:
+                return laneproto::LaneType::DoubleSolid;
+            case laneproto::LineStyle::Unknown:
+            default:
+                return laneproto::LaneType::Unknown;
+        }
+    }
+
+    float estimateOffsetFromPoints(const std::array<laneproto::PointMeters, 3>& points) {
+        float best_x = points[0].x_m;
+        float best_y = std::fabs(points[0].y_m);
+        for (const auto& p : points) {
+            const float abs_y = std::fabs(p.y_m);
+            if (abs_y < best_y) {
+                best_y = abs_y;
+                best_x = p.x_m;
+            }
+        }
+        return best_x;
+    }
+
+    void fillBoundaryDetails(laneproto::LaneBoundaryDetails& dst, const laneproto::LaneLine& line) {
+        dst.type = laneTypeFromStyle(line.style);
+        dst.color = line.color;
+        dst.quality = 255;
+        dst.width_m = 0.1f;
+        dst.points_count = static_cast<std::uint8_t>(line.points_m.size());
+        for (std::size_t i = 0; i < line.points_m.size(); ++i) {
+            dst.points[i].x_m = line.points_m[i].x_m;
+            dst.points[i].y_m = line.points_m[i].y_m;
+        }
+    }
+}
 
 namespace network {
     ConnectionManager::ConnectionManager(QObject* parent)
@@ -13,6 +56,7 @@ namespace network {
         , lane_view_model_(new viewmodels::LaneStateViewModel(this))
         , marking_list_model_(new viewmodels::MarkingObjectListModel(this))
         , warning_list_model_(new viewmodels::WarningListModel(this))
+        , fitted_line_list_model_(new viewmodels::FittedLineListModel(this))
     {
         reconnect_timer_->setSingleShot(true);
         connect(reconnect_timer_, &QTimer::timeout, this, &ConnectionManager::attemptReconnect);
@@ -155,6 +199,13 @@ namespace network {
             setState(State::Error);
             scheduleReconnect();
         });
+        // V2 Protocol signal connections
+        connect(worker_, &TcpReaderWorker::laneLinesParsed,
+                this, &ConnectionManager::laneLinesReceivedSlot);
+        connect(worker_, &TcpReaderWorker::roadObjectsParsed,
+                this, &ConnectionManager::roadObjectsReceivedSlot);
+
+        // Legacy V1 signal connections (not used with V2 protocol)
         connect(worker_, &TcpReaderWorker::laneSummaryParsed,
                 this, &ConnectionManager::laneSummaryReceived);
         connect(worker_, &TcpReaderWorker::markingObjectsParsed,
@@ -371,7 +422,101 @@ namespace network {
         fitted_lines_model_.updateFromProto(lines);
         LOG_DEBUG << "FittedLinesModel updated: " << fitted_lines_model_;
 
+        // Update ViewModel for QML
+        fitted_line_list_model_->updateFromDomain(fitted_lines_model_);
+
         emit fittedLinesModelUpdated();
+    }
+
+    // V2 Protocol slot implementations
+    void ConnectionManager::laneLinesReceivedSlot(const laneproto::LaneLines& lines) {
+        LOG_DEBUG << "LaneLines (V2) received: lines=" << lines.lines.size()
+                  << ", timestamp=" << lines.timestamp_ms;
+
+        // Re-emit for external consumers
+        emit laneLinesReceived(lines);
+
+        // Update fitted lines model from V2 data
+        fitted_lines_model_.updateFromProtoV2(lines);
+        // Update ViewModel for QML
+        fitted_line_list_model_->updateFromDomain(fitted_lines_model_);
+        emit fittedLinesModelUpdated();
+
+        if (lines.lines.empty()) {
+            lane_state_.reset();
+            lane_view_model_->updateFromDomain(lane_state_);
+            emit laneStateUpdated();
+            updateWarnings(lines.timestamp_ms);
+            return;
+        }
+
+        const laneproto::LaneLine* left_line = nullptr;
+        const laneproto::LaneLine* right_line = nullptr;
+        for (const auto& line : lines.lines) {
+            if (line.side == laneproto::LineSide::Left && !left_line) {
+                left_line = &line;
+            } else if (line.side == laneproto::LineSide::Right && !right_line) {
+                right_line = &line;
+            }
+
+            if (left_line && right_line) {
+                break;
+            }
+        }
+
+        laneproto::LaneSummary summary;
+        summary.timestamp_ms = lines.timestamp_ms;
+        summary.seq = lines.seq;
+        summary.lane_type_left = left_line ? laneTypeFromStyle(left_line->style) : laneproto::LaneType::Unknown;
+        summary.lane_type_right = right_line ? laneTypeFromStyle(right_line->style) : laneproto::LaneType::Unknown;
+        summary.allowed_maneuvers = 0xFF;
+        summary.quality = 255;
+        if (left_line && right_line) {
+            summary.left_offset_m = estimateOffsetFromPoints(left_line->points_m);
+            summary.right_offset_m = estimateOffsetFromPoints(right_line->points_m);
+        } else {
+            summary.left_offset_m = 0.0f;
+            summary.right_offset_m = 0.0f;
+        }
+
+        lane_state_.updateFromProto(summary);
+
+        laneproto::LaneDetails details{};
+        details.timestamp_ms = lines.timestamp_ms;
+        details.seq = lines.seq;
+        details.left_offset_m = summary.left_offset_m;
+        details.right_offset_m = summary.right_offset_m;
+        details.allowed_maneuvers = summary.allowed_maneuvers;
+        details.quality = summary.quality;
+        if (left_line) {
+            fillBoundaryDetails(details.left, *left_line);
+        }
+        if (right_line) {
+            fillBoundaryDetails(details.right, *right_line);
+        }
+
+        lane_state_.updateFromProto(details);
+        lane_view_model_->updateFromDomain(lane_state_);
+        emit laneStateUpdated();
+        updateWarnings(lines.timestamp_ms);
+    }
+
+    void ConnectionManager::roadObjectsReceivedSlot(const laneproto::RoadObjects& objects) {
+        LOG_DEBUG << "RoadObjects (V2) received: objects=" << objects.objects.size()
+                  << ", timestamp=" << objects.timestamp_ms;
+
+        // Re-emit for external consumers
+        emit roadObjectsReceived(objects);
+
+        // Update marking model from V2 data
+        marking_model_.updateFromProtoV2(objects);
+        marking_list_model_->updateFromDomain(marking_model_);
+        emit markingModelUpdated();
+
+        if (lane_state_.isValid()) {
+            const std::uint64_t timestamp_ms = objects.timestamp_ms;
+            updateWarnings(timestamp_ms);
+        }
     }
 
 }
