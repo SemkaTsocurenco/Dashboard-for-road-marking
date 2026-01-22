@@ -15,6 +15,11 @@ namespace viewmodels {
         objects_.clear();
         objects_.reserve(model.size());
 
+
+        for (const auto& obj : model) {
+            objects_.push_back(obj);
+        }
+
         if (timestamp_ms_ != model.timestampMs()) {
             timestamp_ms_ = model.timestampMs();
             emit timestampChanged(timestamp_ms_);

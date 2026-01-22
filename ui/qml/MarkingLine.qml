@@ -73,7 +73,7 @@ Node {
         readonly property real stripeThicknessMeters: 0.8
         readonly property real gapThicknessMeters: 0.6
         // Fill entire road width with stripes
-        readonly property int stripeCount: Math.max(4, Math.floor(root.lengthM / (stripeThicknessMeters + gapThicknessMeters)))
+        readonly property int stripeCount: Math.max(4, Math.floor((root.lengthM / 10) / (stripeThicknessMeters + gapThicknessMeters)))
         readonly property real actualStripeThickness: stripeThicknessMeters
 
         Component.onCompleted: {
@@ -100,7 +100,7 @@ Node {
                 scale: Qt.vector3d(
                     crosswalkNode.actualStripeThickness,  // stripe thickness (X axis)
                     sceneConfig.markingHeight,
-                    root.lengthM  // stripe length along road (Z axis)
+                    root.widthM/10  // stripe length along road (Z axis)
                 )
 
                 opacity: root.objectOpacity

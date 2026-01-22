@@ -8,6 +8,7 @@
 #include <QLineF>
 #include <QPolygonF>
 #include <QPainterPath>
+#include <algorithm>
 #include <cmath>
 
 using namespace video;
@@ -275,18 +276,23 @@ void MarkingOverlayProcessor::drawLaneOverlay(QPainter& painter, const QSize& im
     if (!m_laneStateViewModel || !m_laneStateViewModel->isValid())
         return;
 
+    // Scale factor based on image size (base resolution: 720p)
+    const float baseHeight = 720.0f;
+    const float scaleFactor = std::max(1.0f, static_cast<float>(imageSize.height()) / baseHeight);
+
     auto drawBoundaryPoints = [&](const QVariantList& points, const QColor& color){
         const QVector<QPointF> pts = variantPointsToVec(points);
         if (pts.isEmpty())
             return;
 
-        QPen pen(color, 2, Qt::SolidLine);
+        QPen pen(color, 2 * scaleFactor, Qt::SolidLine);
         painter.setPen(pen);
         painter.setBrush(QBrush(color));
 
+        const float pointRadius = 3.0f * scaleFactor;
         for (int i = 0; i < pts.size(); ++i) {
             QPointF p = worldToImage(pts[i].x(), pts[i].y(), imageSize);
-            painter.drawEllipse(p, 3, 3);
+            painter.drawEllipse(p, pointRadius, pointRadius);
         }
     };
 
@@ -299,20 +305,26 @@ void MarkingOverlayProcessor::drawLaneOverlay(QPainter& painter, const QSize& im
     }
 
     // Информационный текст в верхнем левом углу
-    painter.setPen(Qt::white);
-    painter.setFont(QFont("Arial", 10, QFont::Bold));
+    const int fontSize = static_cast<int>(10 * scaleFactor);
+    const int textX = static_cast<int>(10 * scaleFactor);
+    const int lineHeight = static_cast<int>(15 * scaleFactor);
 
-    // Фон для текста (using config values)
+    painter.setPen(Qt::white);
+    painter.setFont(QFont("Arial", fontSize, QFont::Bold));
+
+    // Фон для текста (using config values, scaled)
     const auto& overlay_cfg = config::VideoProcessingConfig{}.overlay;
-    QRect textBg(overlay_cfg.text_padding_x, overlay_cfg.text_padding_y,
-                 overlay_cfg.text_background_width, overlay_cfg.text_background_height);
+    QRect textBg(static_cast<int>(overlay_cfg.text_padding_x * scaleFactor),
+                 static_cast<int>(overlay_cfg.text_padding_y * scaleFactor),
+                 static_cast<int>(overlay_cfg.text_background_width * scaleFactor),
+                 static_cast<int>(overlay_cfg.text_background_height * scaleFactor));
     painter.fillRect(textBg, QColor(0, 0, 0, 150));
 
-    painter.drawText(10, 20, QString("Lane Width: %1m").arg(m_laneStateViewModel->laneWidthMeters(), 0, 'f', 2));
-    painter.drawText(10, 35, QString("Quality: L:%1% R:%2%")
+    painter.drawText(textX, textX + lineHeight, QString("Lane Width: %1m").arg(m_laneStateViewModel->laneWidthMeters(), 0, 'f', 2));
+    painter.drawText(textX, textX + lineHeight * 2, QString("Quality: L:%1% R:%2%")
                                   .arg(m_laneStateViewModel->laneQualityLeftPercent())
                                   .arg(m_laneStateViewModel->laneQualityRightPercent()));
-    painter.drawText(10, 50, QString("Lines: %1").arg(m_fittedLinesModel.size()));
+    painter.drawText(textX, textX + lineHeight * 3, QString("Lines: %1").arg(m_fittedLinesModel.size()));
 }
 
 void MarkingOverlayProcessor::drawMarkingObjects(QPainter& painter, const QSize& imageSize)
@@ -368,8 +380,18 @@ void MarkingOverlayProcessor::drawWarnings(QPainter& painter, const QSize& image
     if (count == 0)
         return;
 
-    int yOffset = 50;
-    painter.setFont(QFont("Arial", 11, QFont::Bold));
+    // Scale factor based on image size (base resolution: 720p)
+    const float baseHeight = 720.0f;
+    const float scaleFactor = std::max(1.0f, static_cast<float>(imageSize.height()) / baseHeight);
+
+    const int fontSize = static_cast<int>(11 * scaleFactor);
+    const int textX = static_cast<int>(10 * scaleFactor);
+    const int paddingX = static_cast<int>(5 * scaleFactor);
+    const int paddingY = static_cast<int>(3 * scaleFactor);
+    const int spacing = static_cast<int>(5 * scaleFactor);
+
+    int yOffset = static_cast<int>(50 * scaleFactor);
+    painter.setFont(QFont("Arial", fontSize, QFont::Bold));
 
     for (int i = 0; i < count; ++i) {
         QModelIndex index = m_warningListModel->index(i, 0);
@@ -382,21 +404,20 @@ void MarkingOverlayProcessor::drawWarnings(QPainter& painter, const QSize& image
         const QString message = m_warningListModel->data(index, viewmodels::WarningListModel::MessageRole).toString();
         const float distance = m_warningListModel->data(index, viewmodels::WarningListModel::DistanceMetersRole).toFloat();
 
-        const auto& overlay_cfg = config::VideoProcessingConfig{}.overlay;
         QColor bgColor = isCritical ? QColor(220, 0, 0, 180) : QColor(255, 165, 0, 180);
         QColor textColor = Qt::white;
 
         QString text = QString("%1 (%2m)").arg(message).arg(distance, 0, 'f', 1);
         QFontMetrics fm(painter.font());
         QRect textRect = fm.boundingRect(text);
-        textRect.adjust(-5, -3, 5, 3);
-        textRect.moveTopLeft(QPoint(10, yOffset));
+        textRect.adjust(-paddingX, -paddingY, paddingX, paddingY);
+        textRect.moveTopLeft(QPoint(textX, yOffset));
 
         painter.fillRect(textRect, bgColor);
         painter.setPen(textColor);
         painter.drawText(textRect, Qt::AlignCenter, text);
 
-        yOffset += textRect.height() + 5;
+        yOffset += textRect.height() + spacing;
     }
 }
 
@@ -605,18 +626,29 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
         const auto& pointsM = line.pointsMeters();
         const auto& pointsPx = line.pointsPixels();
 
-        painter.setFont(QFont("Arial", 8));
+        // Scale factor based on image size (base resolution: 720p)
+        const float baseHeight = 720.0f;
+        const float scaleFactor = std::max(1.0f, static_cast<float>(imageSize.height()) / baseHeight);
+
+        // Scaled font size
+        const int fontSize = static_cast<int>(8 * scaleFactor);
+        painter.setFont(QFont("Arial", fontSize));
 
         auto drawCompactCoordLabel = [&](const QPointF& pos, float xMeters, float yMeters, const QColor& lineColor) {
+            // Scaled dimensions
+            const float pointRadius = 3.0f * scaleFactor;
+            const float labelOffsetX = 8.0f * scaleFactor;
+            const float labelOffsetY = -6.0f * scaleFactor;
+            const float borderWidth = 1.5f * scaleFactor;
+            const float cornerRadius = 3.0f * scaleFactor;
+            const int padding = static_cast<int>(4 * scaleFactor);
+
             // Draw small point marker
-            const float pointRadius = 3.0f;
-            painter.setPen(QPen(Qt::black, 1));
+            painter.setPen(QPen(Qt::black, 1 * scaleFactor));
             painter.setBrush(lineColor);
             painter.drawEllipse(pos, pointRadius, pointRadius);
 
             // Label offset
-            const float labelOffsetX = 8.0f;
-            const float labelOffsetY = -6.0f;
             QPointF labelPos(pos.x() + labelOffsetX, pos.y() + labelOffsetY);
 
             // Readable label text with clear x/y separation
@@ -624,12 +656,12 @@ void MarkingOverlayProcessor::drawFittedLinesOverlay(QPainter& painter, const QS
             QFontMetrics fm(painter.font());
             QRect textRect = fm.boundingRect(label);
             textRect.moveTopLeft(QPoint(labelPos.x(), labelPos.y() - textRect.height() / 2));
-            textRect.adjust(-4, -2, 4, 2);
+            textRect.adjust(-padding, -padding / 2, padding, padding / 2);
 
             // Draw label background with colored border
-            painter.setPen(QPen(lineColor, 1.5));
+            painter.setPen(QPen(lineColor, borderWidth));
             painter.setBrush(QColor(0, 0, 0, 180));
-            painter.drawRoundedRect(textRect, 3, 3);
+            painter.drawRoundedRect(textRect, cornerRadius, cornerRadius);
 
             // Draw label text
             painter.setPen(Qt::white);
@@ -724,18 +756,28 @@ void MarkingOverlayProcessor::drawMarkingObjectWithContour(QPainter& painter, co
 
     painter.restore();
 
+    // Scale factor based on image size (base resolution: 720p)
+    const float baseHeight = 720.0f;
+    const float scaleFactor = std::max(1.0f, static_cast<float>(imageSize.height()) / baseHeight);
+
     // Draw coordinate label with small point marker
-    painter.setFont(QFont("Arial", 8));
+    const int fontSize = static_cast<int>(8 * scaleFactor);
+    painter.setFont(QFont("Arial", fontSize));
+
+    // Scaled dimensions
+    const float pointRadius = 3.5f * scaleFactor;
+    const float labelOffsetX = 10.0f * scaleFactor;
+    const float labelOffsetY = -lengthPx / 2.0f - 10.0f * scaleFactor;
+    const float borderWidth = 1.5f * scaleFactor;
+    const float cornerRadius = 3.0f * scaleFactor;
+    const int padding = static_cast<int>(4 * scaleFactor);
 
     // Draw small point marker at object center
-    const float pointRadius = 3.5f;
-    painter.setPen(QPen(Qt::black, 1));
+    painter.setPen(QPen(Qt::black, 1 * scaleFactor));
     painter.setBrush(color);
     painter.drawEllipse(center, pointRadius, pointRadius);
 
     // Label offset (to the upper right)
-    const float labelOffsetX = 10.0f;
-    const float labelOffsetY = -lengthPx / 2.0f - 10.0f;
     QPointF labelAnchor(center.x() + labelOffsetX, center.y() + labelOffsetY);
 
     // Readable label text with clear x/y separation
@@ -743,12 +785,12 @@ void MarkingOverlayProcessor::drawMarkingObjectWithContour(QPainter& painter, co
     QFontMetrics fm(painter.font());
     QRect textRect = fm.boundingRect(coordLabel);
     textRect.moveTopLeft(QPoint(labelAnchor.x(), labelAnchor.y() - textRect.height() / 2));
-    textRect.adjust(-4, -2, 4, 2);
+    textRect.adjust(-padding, -padding / 2, padding, padding / 2);
 
     // Draw label background with colored border
-    painter.setPen(QPen(color, 1.5));
+    painter.setPen(QPen(color, borderWidth));
     painter.setBrush(QColor(0, 0, 0, 180));
-    painter.drawRoundedRect(textRect, 3, 3);
+    painter.drawRoundedRect(textRect, cornerRadius, cornerRadius);
 
     // Draw label text
     painter.setPen(Qt::white);
