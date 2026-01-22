@@ -29,35 +29,62 @@ Node {
         clipFar: sceneConfig.cameraClipFar
     }
 
+    // Main key light - warm sunlight from above-front
     DirectionalLight {
-        eulerRotation: Qt.vector3d(-45, 15, 0)
-        brightness: sceneConfig.mainLightBrightness
-        castsShadow: false
-        color: "#e0e0e0"
+        eulerRotation: Qt.vector3d(-50, 25, 0)
+        brightness: sceneConfig.mainLightBrightness * 1.2
+        castsShadow: true
+        shadowMapQuality: Light.ShadowMapQualityHigh
+        shadowBias: 0.5
+        shadowFactor: 35
+        color: "#fff5e6"
     }
 
+    // Fill light - cool blue from the side for contrast
     DirectionalLight {
-        eulerRotation: Qt.vector3d(35, -35, 0)
-        brightness: sceneConfig.secondaryLightBrightness
+        eulerRotation: Qt.vector3d(30, -45, 0)
+        brightness: sceneConfig.secondaryLightBrightness * 0.9
         castsShadow: false
-        color: "#cfd8e3"
+        color: "#b8d4e8"
     }
 
+    // Rim/back light - cyan accent for edge definition
     DirectionalLight {
-        eulerRotation: Qt.vector3d(-15, -150, 0)
-        brightness: sceneConfig.tertiaryLightBrightness
+        eulerRotation: Qt.vector3d(-10, -160, 0)
+        brightness: sceneConfig.tertiaryLightBrightness * 1.1
         castsShadow: false
-        color: "#5a5a5a"
+        color: "#4de8e8"
     }
 
-    // Local light near the car to make it pop (brightness reduced to avoid washing out)
-    PointLight {
-        position: Qt.vector3d(0, sceneConfig.pointLightYPosition, 0)
-        brightness: sceneConfig.pointLightBrightness
+    // Ambient fill from below - subtle road reflection
+    DirectionalLight {
+        eulerRotation: Qt.vector3d(85, 0, 0)
+        brightness: 0.15
+        castsShadow: false
+        color: "#3a4550"
+    }
+
+    // Local spotlight on car - dramatic highlight
+    SpotLight {
+        position: Qt.vector3d(0, sceneConfig.pointLightYPosition + 100, -200)
+        eulerRotation: Qt.vector3d(-45, 0, 0)
+        brightness: sceneConfig.pointLightBrightness * 1.5
         color: "#ffffff"
+        coneAngle: 55
+        innerConeAngle: 35
         quadraticFade: sceneConfig.pointLightQuadraticFade
-        linearFade: sceneConfig.pointLightLinearFade
+        linearFade: sceneConfig.pointLightLinearFade * 0.5
         constantFade: sceneConfig.pointLightConstantFade
+    }
+
+    // Accent point light - cyan glow for futuristic feel
+    PointLight {
+        position: Qt.vector3d(150, 50, 100)
+        brightness: 0.4
+        color: "#39b9c6"
+        quadraticFade: 0.0001
+        linearFade: 0.001
+        constantFade: 1.0
     }
 
     RoadPlane {
@@ -144,12 +171,18 @@ Node {
             }
 
             readonly property real calculatedRadius: (fittedLineDelegate.side === 1 || fittedLineDelegate.side === 2) ? 1.2 : 0.8
-            readonly property string calculatedColor: {
+            readonly property color calculatedColor: {
                 const lc = String(fittedLineDelegate.lineColorName || "").toLowerCase()
-                if (lc === "yellow") return "#ffd700"
-                if (lc === "red") return "#ff5555"
-                return "#ffffff"
+                if (lc === "yellow") return "#ffcc00"
+                if (lc === "red") return "#ff4444"
+                return "#f0f4f8"
             }
+            // Emissive based on line color for consistent glow
+            readonly property vector3d calculatedEmissive: Qt.vector3d(
+                calculatedColor.r * 0.85,
+                calculatedColor.g * 0.85,
+                calculatedColor.b * 0.85
+            )
             readonly property real pointHeight: carScene.lanePointHeight
 
             // Point 0
@@ -229,9 +262,10 @@ Node {
 
                     materials: PrincipledMaterial {
                         baseColor: fittedLineDelegate.calculatedColor
-                        roughness: 0.75
-                        specularAmount: 0.0
-                        emissiveFactor: Qt.vector3d(0.5, 0.5, 0.5)
+                        roughness: 0.2
+                        specularAmount: 0.35
+                        metalness: 0.0
+                        emissiveFactor: fittedLineDelegate.calculatedEmissive
                     }
                 }
             }
@@ -283,9 +317,10 @@ Node {
 
                     materials: PrincipledMaterial {
                         baseColor: fittedLineDelegate.calculatedColor
-                        roughness: 0.75
-                        specularAmount: 0.0
-                        emissiveFactor: Qt.vector3d(0.5, 0.5, 0.5)
+                        roughness: 0.2
+                        specularAmount: 0.35
+                        metalness: 0.0
+                        emissiveFactor: fittedLineDelegate.calculatedEmissive
                     }
                 }
             }
@@ -336,9 +371,10 @@ Node {
 
                     materials: PrincipledMaterial {
                         baseColor: fittedLineDelegate.calculatedColor
-                        roughness: 0.75
-                        specularAmount: 0.0
-                        emissiveFactor: Qt.vector3d(0.5, 0.5, 0.5)
+                        roughness: 0.2
+                        specularAmount: 0.35
+                        metalness: 0.0
+                        emissiveFactor: fittedLineDelegate.calculatedEmissive
                     }
                 }
             }

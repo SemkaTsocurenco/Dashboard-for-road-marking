@@ -39,15 +39,15 @@ Node {
                                           Math.min(sceneConfig.markingMaxOpacity,
                                                    confidence / sceneConfig.markingConfidenceDivisor))
 
-    // Calculate color based on type
+    // Calculate color based on type - vibrant colors with better contrast
     property color objectColor: {
         const lc = lineColor.toLowerCase()
-        if (lc === "yellow") return "#ffd700"
-        if (lc === "red")    return "#ff5555"
-        if (lc === "white")  return "#ffffff"
-        if (isCrosswalk)     return "#ffffff"
-        if (isArrow)         return "#ffd700"
-        return "#ffffff"
+        if (lc === "yellow") return "#ffcc00"
+        if (lc === "red")    return "#ff4444"
+        if (lc === "white")  return "#f8fafc"
+        if (isCrosswalk)     return "#f0f4f8"
+        if (isArrow)         return "#ffc107"
+        return "#f0f4f8"
     }
 
     readonly property bool isMotorIcon: root.classId === 0x16
@@ -108,11 +108,11 @@ Node {
                 receivesShadows: false
 
                 materials: PrincipledMaterial {
-                    baseColor: "#ffffff"  // Always white for crosswalk
-                    emissiveFactor: Qt.vector3d(0.6, 0.6, 0.6)  // Brighter for visibility
-                    roughness: 0.4
+                    baseColor: "#f8fafc"
+                    emissiveFactor: Qt.vector3d(0.95, 0.97, 1.0)
+                    roughness: 0.25
                     metalness: 0.0
-                    specularAmount: 0.0
+                    specularAmount: 0.3
                 }
             }
         }
@@ -141,20 +141,20 @@ Node {
         readonly property real totalLength: root.lengthM
         readonly property real totalWidth: root.widthM
 
-        // Common material properties
+        // Common material properties - enhanced glow
         property vector3d emissive: Qt.vector3d(
-            root.objectColor.r * 0.7,
-            root.objectColor.g * 0.7,
-            root.objectColor.b * 0.7
+            root.objectColor.r * 0.95,
+            root.objectColor.g * 0.85,
+            root.objectColor.b * 0.3
         )
 
-        // Helper for consistent material on all arrow parts.
+        // Helper for consistent material on all arrow parts - brighter with glow
         component ArrowMaterial: PrincipledMaterial {
             baseColor: root.objectColor
             emissiveFactor: arrowNode.emissive
-            roughness: 0.35
+            roughness: 0.2
             metalness: 0.0
-            specularAmount: 0.0
+            specularAmount: 0.35
         }
 
         // Straight arrow (points to +Z in local space).
@@ -465,12 +465,12 @@ Node {
         readonly property real doubleLineOffset: (doubleLineGap + doubleLineWidth) * 0.5
 
         readonly property vector3d emissive: Qt.vector3d(
-            root.objectColor.r * sceneConfig.markingEmissiveFactorScale,
-            root.objectColor.g * sceneConfig.markingEmissiveFactorScale,
-            root.objectColor.b * sceneConfig.markingEmissiveFactorScale
+            Math.min(1.0, root.objectColor.r * 0.9),
+            Math.min(1.0, root.objectColor.g * 0.9),
+            Math.min(1.0, root.objectColor.b * 0.9)
         )
 
-        // Solid style
+        // Solid style - enhanced visibility
         Model {
             visible: genericNode.isSolidStyle
             source: "#Cube"
@@ -485,9 +485,9 @@ Node {
             materials: PrincipledMaterial {
                 baseColor: root.objectColor
                 emissiveFactor: genericNode.emissive
-                roughness: genericNode.markingRoughness
+                roughness: 0.25
                 metalness: 0.0
-                specularAmount: 0.0
+                specularAmount: 0.3
             }
         }
 
@@ -514,14 +514,14 @@ Node {
                 materials: PrincipledMaterial {
                     baseColor: root.objectColor
                     emissiveFactor: genericNode.emissive
-                    roughness: genericNode.markingRoughness
+                    roughness: 0.25
                     metalness: 0.0
-                    specularAmount: 0.0
+                    specularAmount: 0.3
                 }
             }
         }
 
-        // Double style
+        // Double style - enhanced glow
         Model {
             visible: genericNode.isDoubleStyle
             source: "#Cube"
@@ -537,9 +537,9 @@ Node {
             materials: PrincipledMaterial {
                 baseColor: root.objectColor
                 emissiveFactor: genericNode.emissive
-                roughness: genericNode.markingRoughness
+                roughness: 0.25
                 metalness: 0.0
-                specularAmount: 0.0
+                specularAmount: 0.3
             }
         }
 
@@ -558,9 +558,9 @@ Node {
             materials: PrincipledMaterial {
                 baseColor: root.objectColor
                 emissiveFactor: genericNode.emissive
-                roughness: genericNode.markingRoughness
+                roughness: 0.25
                 metalness: 0.0
-                specularAmount: 0.0
+                specularAmount: 0.3
             }
         }
     }
