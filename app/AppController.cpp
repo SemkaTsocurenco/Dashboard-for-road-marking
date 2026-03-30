@@ -157,8 +157,8 @@ void AppController::configureComponents()
     LOG_DEBUG << "WarningEngine configured";
 
     video_widget_->setAutoStart(config_.video.auto_start);
-    video_widget_->setSourceUrl(config_.video.source_url);
-    LOG_DEBUG << "VideoWidget configured: url=" << config_.video.source_url.toStdString();
+    video_widget_->setSourceUrl(config_.video.camera_source_url);
+    LOG_DEBUG << "VideoWidget configured: url=" << config_.video.camera_source_url.toStdString();
 
     video_widget_->addFrameProcessor(overlay_processor_);
 

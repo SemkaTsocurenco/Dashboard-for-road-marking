@@ -147,6 +147,29 @@ struct DashboardViewSettings {
 };
 
 
+struct CameraFovSettings {
+    float height_above_road_m{1.0f};    // Physical camera height above road (m)
+    float pitch_deg{0.0f};              // Tilt down from horizontal (degrees)
+    float horizontal_fov_deg{66.0f};    // Horizontal field of view (degrees)
+    float vertical_fov_deg{41.0f};      // Vertical field of view (degrees)
+    float forward_offset_m{2.25f};      // Camera forward offset from car center (m)
+    float max_range_m{40.0f};           // Max useful detection range from lens (m)
+
+    QJsonObject toJson() const;
+    static CameraFovSettings fromJson(const QJsonObject& json);
+};
+
+
+struct CrossingZoneSettings {
+    float far_m{15.0f};     // Far edge of crossing zone from car center (m)
+    float left_m{1.0f};     // Left half-width of crossing zone (m)
+    float right_m{1.0f};    // Right half-width of crossing zone (m)
+
+    QJsonObject toJson() const;
+    static CrossingZoneSettings fromJson(const QJsonObject& json);
+};
+
+
 struct WarningPanelSettings {
     // Panel dimensions
     int width{360};
@@ -175,6 +198,8 @@ struct SceneConfig {
     CenterOffsetIndicatorSettings center_offset;
     DashboardViewSettings dashboard;
     WarningPanelSettings warning_panel;
+    CameraFovSettings camera_fov;
+    CrossingZoneSettings crossing_zone;
 
     QJsonObject toJson() const;
     static SceneConfig fromJson(const QJsonObject& json);

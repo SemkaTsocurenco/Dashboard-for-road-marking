@@ -10,14 +10,14 @@
     "clip_far": 50000.0
   },
   "lighting": {
-    "main_light_brightness": 0.8,
-    "secondary_light_brightness": 0.5,
-    "tertiary_light_brightness": 0.3,
-    "point_light_y_position": 10.0,
-    "point_light_brightness": 5.0,
+    "main_light_brightness": 1.0,
+    "secondary_light_brightness": 0.65,
+    "tertiary_light_brightness": 0.35,
+    "point_light_y_position": 400.0,
+    "point_light_brightness": 4.0,
     "point_light_constant_fade": 1.0,
-    "point_light_linear_fade": 0.02,
-    "point_light_quadratic_fade": 0.001
+    "point_light_linear_fade": 0.002,
+    "point_light_quadratic_fade": 0.00001
   },
   "road": {
     "width_m": 12.0,
@@ -54,8 +54,8 @@
     "marker_y_position": 0.1
   },
   "center_offset": {
-    "width": 320,
-    "height": 130,
+    "width": 240,
+    "height": 100,
     "max_offset_m": 1.0,
     "normalization_divisor": 1.0,
     "normalization_multiplier": 2.0,
@@ -68,8 +68,21 @@
     "camera_info_width": 350,
     "camera_info_height": 80
   },
+  "camera_fov": {
+    "height_above_road_m": 1.0,
+    "pitch_deg": 0.0,
+    "horizontal_fov_deg": 66.0,
+    "vertical_fov_deg": 41.0,
+    "forward_offset_m": 5.0,
+    "max_range_m": 40.0
+  },
+  "crossing_zone": {
+    "far_m": 15.0,
+    "left_m": 1.0,
+    "right_m": 1.0
+  },
   "warning_panel": {
-    "width": 360,
+    "width": 260,
     "color_animation_duration_ms": 150,
     "connected_opacity": 1.0,
     "disconnected_opacity": 0.7,

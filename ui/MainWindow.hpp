@@ -12,6 +12,7 @@
 #include <QCloseEvent>
 #include <QSplitter>
 #include <QFrame>
+#include <QComboBox>
 
 #include "AppController.hpp"
 #include "DashboardWidget.hpp"
@@ -46,8 +47,11 @@ private:
     QGroupBox* control_panel_;
     QPushButton* connect_button_;
     QPushButton* disconnect_button_;
+    QPushButton* video_start_button_;
+    QPushButton* video_stop_button_;
     QLineEdit* host_input_;
     QLineEdit* port_input_;
+    QComboBox* video_source_combo_;
 
     QSplitter* content_splitter_;
     DashboardWidget* dashboard_widget_;
@@ -69,6 +73,9 @@ private slots:
 
     void onAboutAction();
     void onExitAction();
+    void onVideoSourceChanged(int index);
+    void onVideoStartButtonClicked();
+    void onVideoStopButtonClicked();
 };
 
 } // namespace ui

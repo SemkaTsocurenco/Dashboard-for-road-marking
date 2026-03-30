@@ -8,6 +8,7 @@
   },
   "video": {
     "source_url": "udp://239.0.0.1:5000",
+    "camera_source_url": "csi://?width=1536&height=864&framerate=120",
     "auto_start": false
   },
   "video_processing": {

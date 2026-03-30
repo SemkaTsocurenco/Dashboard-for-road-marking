@@ -88,6 +88,22 @@ void MainWindow::setupControlPanel()
     port_input_->setMinimumHeight(28);
     layout->addWidget(port_input_);
 
+    // Video source selector
+    auto* video_src_label = new QLabel("Video:", control_panel_);
+    video_src_label->setStyleSheet("font-weight: 600; color: #a5abb2;");
+    layout->addWidget(video_src_label);
+
+    video_source_combo_ = new QComboBox(control_panel_);
+    video_source_combo_->blockSignals(true);
+    video_source_combo_->addItem("Camera (CSI)", controller_->config().video.camera_source_url);
+    video_source_combo_->addItem("RTP Stream", controller_->config().video.source_url);
+    video_source_combo_->blockSignals(false);
+    video_source_combo_->setMinimumHeight(28);
+    video_source_combo_->setMinimumWidth(120);
+    connect(video_source_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &MainWindow::onVideoSourceChanged);
+    layout->addWidget(video_source_combo_);
+
     // Visual separator
     auto* separator = new QFrame(control_panel_);
     separator->setFrameShape(QFrame::VLine);
@@ -95,7 +111,7 @@ void MainWindow::setupControlPanel()
     separator->setStyleSheet("color: #313842;");
     layout->addWidget(separator);
 
-    // Buttons
+    // Data (TCP) buttons
     connect_button_ = new QPushButton("Connect", control_panel_);
     connect_button_->setMinimumWidth(85);
     connect_button_->setMinimumHeight(28);
@@ -108,6 +124,27 @@ void MainWindow::setupControlPanel()
     disconnect_button_->setEnabled(false);
     connect(disconnect_button_, &QPushButton::clicked, this, &MainWindow::onDisconnectButtonClicked);
     layout->addWidget(disconnect_button_);
+
+    // Visual separator
+    auto* separator2 = new QFrame(control_panel_);
+    separator2->setFrameShape(QFrame::VLine);
+    separator2->setFrameShadow(QFrame::Plain);
+    separator2->setStyleSheet("color: #313842;");
+    layout->addWidget(separator2);
+
+    // Video buttons (independent of TCP)
+    video_start_button_ = new QPushButton("Start Video", control_panel_);
+    video_start_button_->setMinimumWidth(85);
+    video_start_button_->setMinimumHeight(28);
+    connect(video_start_button_, &QPushButton::clicked, this, &MainWindow::onVideoStartButtonClicked);
+    layout->addWidget(video_start_button_);
+
+    video_stop_button_ = new QPushButton("Stop Video", control_panel_);
+    video_stop_button_->setMinimumWidth(85);
+    video_stop_button_->setMinimumHeight(28);
+    video_stop_button_->setEnabled(false);
+    connect(video_stop_button_, &QPushButton::clicked, this, &MainWindow::onVideoStopButtonClicked);
+    layout->addWidget(video_stop_button_);
 
     layout->addStretch();
 
@@ -133,8 +170,8 @@ void MainWindow::setupContentPanel()
     content_splitter_->addWidget(dashboard_widget_);
 
     // Set stretch factors for 60/40 split (video gets more space)
-    content_splitter_->setStretchFactor(0, 3);  // Video: 60%
-    content_splitter_->setStretchFactor(1, 2);  // 3D Dashboard: 40%
+    content_splitter_->setStretchFactor(0, 1);  // Video: 60%
+    content_splitter_->setStretchFactor(1, 1);  // 3D Dashboard: 40%
 
     // Force initial 60/40 split once layout is calculated
     QTimer::singleShot(0, this, [this, ui_config]() {
@@ -201,18 +238,15 @@ void MainWindow::onConnectButtonClicked()
 
     LOG_INFO << "Connecting to " << host.toStdString() << ":" << port;
 
-    controller_->connectionManager()->connectToHost(host, port);
+    connect_button_->setEnabled(false);
 
-    if (!controller_->isVideoConnected()) {
-        controller_->videoWidget()->connectToSource();
-    }
+    controller_->connectionManager()->connectToHost(host, port);
 }
 
 void MainWindow::onDisconnectButtonClicked()
 {
     LOG_INFO << "Disconnecting...";
     controller_->connectionManager()->disconnectFromHost();
-    controller_->videoWidget()->disconnectFromSource();
 }
 
 void MainWindow::onStatusMessageChanged(const QString& message)
@@ -240,6 +274,7 @@ void MainWindow::onDataConnectionChanged(bool connected)
         data_status_label_->setText("Data: Disconnected");
         data_status_label_->setStyleSheet("color: red;");
         disconnect_button_->setEnabled(false);
+        connect_button_->setEnabled(true);
     }
 }
 
@@ -248,10 +283,25 @@ void MainWindow::onVideoConnectionChanged(bool connected)
     if (connected) {
         video_status_label_->setText("Video: Connected");
         video_status_label_->setStyleSheet("color: green;");
+        video_start_button_->setEnabled(false);
+        video_stop_button_->setEnabled(true);
     } else {
         video_status_label_->setText("Video: Disconnected");
         video_status_label_->setStyleSheet("color: red;");
+        video_start_button_->setEnabled(true);
+        video_stop_button_->setEnabled(false);
     }
+}
+
+void MainWindow::onVideoStartButtonClicked()
+{
+    video_start_button_->setEnabled(false);
+    controller_->videoWidget()->connectToSource();
+}
+
+void MainWindow::onVideoStopButtonClicked()
+{
+    controller_->videoWidget()->disconnectFromSource();
 }
 
 void MainWindow::onAboutAction()
@@ -266,6 +316,24 @@ void MainWindow::onAboutAction()
 void MainWindow::onExitAction()
 {
     close();
+}
+
+void MainWindow::onVideoSourceChanged(int index)
+{
+    const QString url = video_source_combo_->itemData(index).toString();
+    auto* videoWidget = controller_->videoWidget();
+    if (!videoWidget)
+        return;
+
+    const bool wasConnected = videoWidget->isConnected();
+    if (wasConnected)
+        videoWidget->disconnectFromSource();
+
+    videoWidget->setSourceUrl(url);
+    LOG_INFO << "Video source switched to: " << url.toStdString();
+
+    if (wasConnected)
+        videoWidget->connectToSource();
 }
 
 } // namespace ui

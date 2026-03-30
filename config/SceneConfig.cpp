@@ -285,6 +285,55 @@ WarningPanelSettings WarningPanelSettings::fromJson(const QJsonObject& json) {
     return settings;
 }
 
+// CameraFovSettings
+QJsonObject CameraFovSettings::toJson() const {
+    QJsonObject json;
+    json["height_above_road_m"] = static_cast<double>(height_above_road_m);
+    json["pitch_deg"] = static_cast<double>(pitch_deg);
+    json["horizontal_fov_deg"] = static_cast<double>(horizontal_fov_deg);
+    json["vertical_fov_deg"] = static_cast<double>(vertical_fov_deg);
+    json["forward_offset_m"] = static_cast<double>(forward_offset_m);
+    json["max_range_m"] = static_cast<double>(max_range_m);
+    return json;
+}
+
+CameraFovSettings CameraFovSettings::fromJson(const QJsonObject& json) {
+    CameraFovSettings settings;
+    if (json.contains("height_above_road_m"))
+        settings.height_above_road_m = static_cast<float>(json["height_above_road_m"].toDouble());
+    if (json.contains("pitch_deg"))
+        settings.pitch_deg = static_cast<float>(json["pitch_deg"].toDouble());
+    if (json.contains("horizontal_fov_deg"))
+        settings.horizontal_fov_deg = static_cast<float>(json["horizontal_fov_deg"].toDouble());
+    if (json.contains("vertical_fov_deg"))
+        settings.vertical_fov_deg = static_cast<float>(json["vertical_fov_deg"].toDouble());
+    if (json.contains("forward_offset_m"))
+        settings.forward_offset_m = static_cast<float>(json["forward_offset_m"].toDouble());
+    if (json.contains("max_range_m"))
+        settings.max_range_m = static_cast<float>(json["max_range_m"].toDouble());
+    return settings;
+}
+
+// CrossingZoneSettings
+QJsonObject CrossingZoneSettings::toJson() const {
+    QJsonObject json;
+    json["far_m"] = static_cast<double>(far_m);
+    json["left_m"] = static_cast<double>(left_m);
+    json["right_m"] = static_cast<double>(right_m);
+    return json;
+}
+
+CrossingZoneSettings CrossingZoneSettings::fromJson(const QJsonObject& json) {
+    CrossingZoneSettings settings;
+    if (json.contains("far_m"))
+        settings.far_m = static_cast<float>(json["far_m"].toDouble());
+    if (json.contains("left_m"))
+        settings.left_m = static_cast<float>(json["left_m"].toDouble());
+    if (json.contains("right_m"))
+        settings.right_m = static_cast<float>(json["right_m"].toDouble());
+    return settings;
+}
+
 // SceneConfig
 QJsonObject SceneConfig::toJson() const {
     QJsonObject json;
@@ -297,6 +346,8 @@ QJsonObject SceneConfig::toJson() const {
     json["center_offset"] = center_offset.toJson();
     json["dashboard"] = dashboard.toJson();
     json["warning_panel"] = warning_panel.toJson();
+    json["camera_fov"] = camera_fov.toJson();
+    json["crossing_zone"] = crossing_zone.toJson();
     return json;
 }
 
@@ -320,6 +371,10 @@ SceneConfig SceneConfig::fromJson(const QJsonObject& json) {
         config.dashboard = DashboardViewSettings::fromJson(json["dashboard"].toObject());
     if (json.contains("warning_panel"))
         config.warning_panel = WarningPanelSettings::fromJson(json["warning_panel"].toObject());
+    if (json.contains("camera_fov"))
+        config.camera_fov = CameraFovSettings::fromJson(json["camera_fov"].toObject());
+    if (json.contains("crossing_zone"))
+        config.crossing_zone = CrossingZoneSettings::fromJson(json["crossing_zone"].toObject());
     return config;
 }
 

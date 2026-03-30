@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Dashboard
+Comment=Road Marking Dashboard
+Exec=/home/semka/dashboard/build/dashboard
+Path=/home/semka/dashboard/build
+Terminal=false
+StartupNotify=true
+Categories=Utility;

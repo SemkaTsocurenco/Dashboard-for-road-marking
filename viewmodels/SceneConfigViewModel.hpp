@@ -77,6 +77,19 @@ class SceneConfigViewModel : public QObject {
     Q_PROPERTY(int cameraInfoWidth READ cameraInfoWidth CONSTANT)
     Q_PROPERTY(int cameraInfoHeight READ cameraInfoHeight CONSTANT)
 
+    // Camera FOV properties
+    Q_PROPERTY(float fovHeightAboveRoadM READ fovHeightAboveRoadM CONSTANT)
+    Q_PROPERTY(float fovPitchDeg READ fovPitchDeg CONSTANT)
+    Q_PROPERTY(float fovHorizontalDeg READ fovHorizontalDeg CONSTANT)
+    Q_PROPERTY(float fovVerticalDeg READ fovVerticalDeg CONSTANT)
+    Q_PROPERTY(float fovForwardOffsetM READ fovForwardOffsetM CONSTANT)
+    Q_PROPERTY(float fovMaxRangeM READ fovMaxRangeM CONSTANT)
+
+    // Crossing zone properties
+    Q_PROPERTY(float crossingZoneFarM READ crossingZoneFarM CONSTANT)
+    Q_PROPERTY(float crossingZoneLeftM READ crossingZoneLeftM CONSTANT)
+    Q_PROPERTY(float crossingZoneRightM READ crossingZoneRightM CONSTANT)
+
     // Warning panel properties
     Q_PROPERTY(int warningPanelWidth READ warningPanelWidth CONSTANT)
     Q_PROPERTY(int colorAnimationDuration READ colorAnimationDuration CONSTANT)
@@ -155,6 +168,19 @@ public:
     int dashboardHeight() const { return config_.dashboard.height; }
     int cameraInfoWidth() const { return config_.dashboard.camera_info_width; }
     int cameraInfoHeight() const { return config_.dashboard.camera_info_height; }
+
+    // Camera FOV getters
+    float fovHeightAboveRoadM() const { return config_.camera_fov.height_above_road_m; }
+    float fovPitchDeg() const { return config_.camera_fov.pitch_deg; }
+    float fovHorizontalDeg() const { return config_.camera_fov.horizontal_fov_deg; }
+    float fovVerticalDeg() const { return config_.camera_fov.vertical_fov_deg; }
+    float fovForwardOffsetM() const { return config_.camera_fov.forward_offset_m; }
+    float fovMaxRangeM() const { return config_.camera_fov.max_range_m; }
+
+    // Crossing zone getters
+    float crossingZoneFarM() const { return config_.crossing_zone.far_m; }
+    float crossingZoneLeftM() const { return config_.crossing_zone.left_m; }
+    float crossingZoneRightM() const { return config_.crossing_zone.right_m; }
 
     // Warning panel getters
     int warningPanelWidth() const { return config_.warning_panel.width; }

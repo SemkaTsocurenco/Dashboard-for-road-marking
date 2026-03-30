@@ -1,7 +1,8 @@
 # Makefile для проекта Dashboard
 # Быстрые команды для сборки и управления проектом
 
-.PHONY: all build clean rebuild run configure help install
+.PHONY: all build clean rebuild run configure help install \
+        deploy deploy-deps deploy-sync deploy-build deploy-run
 
 # Директории
 BUILD_DIR = build
@@ -132,6 +133,31 @@ info:
 		echo "Исполняемый файл не собран"; \
 	fi
 
+# ============================================================
+# Деплой на Raspberry Pi (через deploy.sh)
+# ============================================================
+DEPLOY_SCRIPT = ./deploy.sh
+
+# Полный деплой: зависимости + синхронизация + сборка + запуск
+deploy:
+	@$(DEPLOY_SCRIPT) all
+
+# Только проверка/установка зависимостей на Pi
+deploy-deps:
+	@$(DEPLOY_SCRIPT) deps
+
+# Только синхронизация файлов на Pi
+deploy-sync:
+	@$(DEPLOY_SCRIPT) sync
+
+# Синхронизация + сборка на Pi
+deploy-build:
+	@$(DEPLOY_SCRIPT) build
+
+# Запуск уже собранного приложения на Pi
+deploy-run:
+	@$(DEPLOY_SCRIPT) run $(ARGS)
+
 # Справка по командам
 help:
 	@echo "=== Доступные команды Makefile ==="
@@ -156,6 +182,13 @@ help:
 	@echo "Качество кода:"
 	@echo "  make format       - Форматирование кода (clang-format)"
 	@echo "  make check        - Статический анализ (clang-tidy)"
+	@echo ""
+	@echo "Деплой на Raspberry Pi:"
+	@echo "  make deploy       - Полный деплой (deps + sync + build + run)"
+	@echo "  make deploy-deps  - Проверка/установка зависимостей на Pi"
+	@echo "  make deploy-sync  - Синхронизация файлов на Pi"
+	@echo "  make deploy-build - Синхронизация + сборка на Pi"
+	@echo "  make deploy-run   - Запуск приложения на Pi (ARGS=... для аргументов)"
 	@echo ""
 	@echo "Информация:"
 	@echo "  make info         - Информация о проекте"

@@ -3,6 +3,7 @@
 #include "AppConfig.hpp"
 
 #include <QUrl>
+#include <QUrlQuery>
 #include <QDateTime>
 
 #include <mutex>
@@ -178,6 +179,23 @@ QString QtMultimediaVideoProvider::buildPipelineDescription(QString& error) cons
     if (!url.isValid()) {
         error = QStringLiteral("Invalid source URL");
         return {};
+    }
+
+    if (url.scheme() == "csi") {
+        const QUrlQuery query(url);
+        const int width = query.hasQueryItem("width") ? query.queryItemValue("width").toInt() : 2304;
+        const int height = query.hasQueryItem("height") ? query.queryItemValue("height").toInt() : 1296;
+        const int framerate = query.hasQueryItem("framerate") ? query.queryItemValue("framerate").toInt() : 56;
+        const int w = (width > 0) ? width : 2304;
+        const int h = (height > 0) ? height : 1296;
+        const int fps = (framerate > 0) ? framerate : 56;
+
+        return QStringLiteral(
+                   "libcamerasrc ! "
+                   "video/x-raw,format=NV12,width=%1,height=%2,framerate=%3/1 ! "
+                   "videoconvert ! video/x-raw,format=RGBA ! "
+                   "appsink name=appsink emit-signals=true sync=false max-buffers=1 drop=true")
+            .arg(w).arg(h).arg(fps);
     }
 
     if (url.scheme() == "udp" || url.scheme() == "rtp") {

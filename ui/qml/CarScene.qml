@@ -64,26 +64,52 @@ Node {
         color: "#3a4550"
     }
 
-    // Local spotlight on car - dramatic highlight
+    // Left headlight - front of bus (+Z direction)
     SpotLight {
-        position: Qt.vector3d(0, sceneConfig.pointLightYPosition + 100, -200)
-        eulerRotation: Qt.vector3d(-45, 0, 0)
-        brightness: sceneConfig.pointLightBrightness * 1.5
-        color: "#ffffff"
+        position: Qt.vector3d(-72, 82, 500)
+        eulerRotation: Qt.vector3d(-7, 180, 0)
+        brightness: sceneConfig.pointLightBrightness * 4.2
+        color: "#d8eeff"
         coneAngle: 55
-        innerConeAngle: 35
+        innerConeAngle: 3
         quadraticFade: sceneConfig.pointLightQuadraticFade
-        linearFade: sceneConfig.pointLightLinearFade * 0.5
+        linearFade: sceneConfig.pointLightLinearFade
         constantFade: sceneConfig.pointLightConstantFade
     }
 
-    // Accent point light - cyan glow for futuristic feel
+    // Right headlight - front of bus (+Z direction)
+    SpotLight {
+        position: Qt.vector3d(72, 82, 500)
+        eulerRotation: Qt.vector3d(-7, 180, 0)
+        brightness: sceneConfig.pointLightBrightness * 4.2
+        color: "#d8eeff"
+        coneAngle: 55
+        innerConeAngle: 3
+        quadraticFade: sceneConfig.pointLightQuadraticFade
+        linearFade: sceneConfig.pointLightLinearFade
+        constantFade: sceneConfig.pointLightConstantFade
+    }
+
+    // Tail lights - rear of bus (-Z direction)
+    SpotLight {
+        position: Qt.vector3d(0, 82, -320)
+        eulerRotation: Qt.vector3d(-7, 0, 0)
+        brightness: sceneConfig.pointLightBrightness * 2.4
+        color: "#ff2200"
+        coneAngle: 65
+        innerConeAngle: 3
+        quadraticFade: sceneConfig.pointLightQuadraticFade * 3.0
+        linearFade: sceneConfig.pointLightLinearFade * 2.0
+        constantFade: sceneConfig.pointLightConstantFade
+    }
+
+    // Bus undercarriage ambient glow
     PointLight {
-        position: Qt.vector3d(150, 50, 100)
-        brightness: 0.4
-        color: "#39b9c6"
-        quadraticFade: 0.0001
-        linearFade: 0.001
+        position: Qt.vector3d(0, 22, 0)
+        brightness: 0.65
+        color: "#1a8eb8"
+        quadraticFade: 0.00012
+        linearFade: 0.0025
         constantFade: 1.0
     }
 

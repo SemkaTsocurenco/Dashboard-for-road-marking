@@ -49,6 +49,7 @@ NetworkConfig NetworkConfig::fromJson(const QJsonObject& json) {
 QJsonObject VideoConfig::toJson() const {
     QJsonObject json;
     json["source_url"] = source_url;
+    json["camera_source_url"] = camera_source_url;
     json["auto_start"] = auto_start;
     return json;
 }
@@ -61,11 +62,16 @@ VideoConfig VideoConfig::fromJson(const QJsonObject& json) {
     if (json.contains("rtsp_url"))
         config.source_url = json["rtsp_url"].toString();
 
+    if (json.contains("camera_source_url"))
+        config.camera_source_url = json["camera_source_url"].toString();
+
     if (json.contains("auto_start"))
         config.auto_start = json["auto_start"].toBool();
 
     if (config.source_url.isEmpty())
         config.source_url = QStringLiteral("udp://239.0.0.1:5000");
+    if (config.camera_source_url.isEmpty())
+        config.camera_source_url = QStringLiteral("csi://");
 
     return config;
 }

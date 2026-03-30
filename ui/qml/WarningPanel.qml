@@ -10,8 +10,10 @@ Item {
 
     Component.onCompleted: console.log("WarningPanel loaded, model activeCount=" + (warningModel ? warningModel.activeCount : "n/a"))
 
+    property bool expanded: false
+
     width: sceneConfig.warningPanelWidth
-    height: container.height
+    height: toggleBtn.height + (expanded ? Theme.spacingSmall + container.height : 0)
 
     function severityColor(sev) {
         if (sev === 2) return Theme.danger    // Critical
@@ -25,16 +27,82 @@ Item {
         return "i"
     }
 
+    // Toggle button (always visible)
+    Rectangle {
+        id: toggleBtn
+        anchors.top: parent.top
+        anchors.left: parent.left
+        width: parent.width
+        height: 24
+        radius: Theme.radiusMedium
+        color: Theme.bgSurface2
+        opacity: Theme.overlayOpacity
+        border.color: Theme.border
+        border.width: 1
+
+        Row {
+            anchors.centerIn: parent
+            spacing: 6
+
+            Text {
+                text: root.expanded ? "▲" : "▼"
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontXSmall
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Text {
+                text: "Warnings"
+                color: Theme.textPrimary
+                font.pixelSize: Theme.fontXSmall
+                font.bold: true
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Rectangle {
+                height: 16
+                width: 22
+                radius: Theme.radiusMedium
+                color: (warningModel && warningModel.activeCount > 0) ? Theme.warning : Theme.bgSurface1
+                border.color: Theme.border
+                anchors.verticalCenter: parent.verticalCenter
+
+                Text {
+                    anchors.centerIn: parent
+                    text: warningModel ? warningModel.activeCount : 0
+                    color: Theme.textPrimary
+                    font.pixelSize: Theme.fontXSmall
+                    font.bold: true
+                }
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.expanded = !root.expanded
+            cursorShape: Qt.PointingHandCursor
+        }
+    }
+
+    // Main panel
     Rectangle {
         id: container
+        anchors.top: toggleBtn.bottom
+        anchors.topMargin: Theme.spacingSmall
+        anchors.left: parent.left
         width: parent.width
-        implicitHeight: column.implicitHeight + 28
+        implicitHeight: column.implicitHeight + 16
         height: implicitHeight
         color: Theme.bgSurface1
         opacity: Theme.overlayOpacity
         radius: Theme.radiusXLarge
         border.color: Theme.border
         border.width: 1
+        visible: root.expanded
+
+        Behavior on opacity {
+            NumberAnimation { duration: 150; easing.type: Easing.InOutQuad }
+        }
 
         Column {
             id: column
@@ -44,35 +112,6 @@ Item {
             anchors.margins: Theme.spacingMedium
             spacing: Theme.spacingMedium
             width: parent.width
-
-            Row {
-                spacing: Theme.spacingSmall
-                anchors.left: parent.left
-                anchors.right: parent.right
-
-                Text {
-                    text: "Warnings"
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontLarge
-                    font.bold: true
-                }
-
-                Rectangle {
-                    height: 20
-                    width: 28
-                    radius: Theme.radiusLarge
-                    color: Theme.bgSurface2
-                    border.color: Theme.border
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: warningModel ? warningModel.activeCount : 0
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSmall
-                        font.bold: true
-                    }
-                }
-            }
 
             Loader {
                 id: emptyState
@@ -94,7 +133,7 @@ Item {
 
                     delegate: Item {
                         width: parent.width
-                        height: visible ? 68 : 0
+                        height: visible ? 50 : 0
                         visible: model.isActive
 
                         Rectangle {
@@ -112,8 +151,8 @@ Item {
                                 spacing: Theme.spacingMedium
 
                                 Rectangle {
-                                    width: 28
-                                    height: 28
+                                    width: 20
+                                    height: 20
                                     radius: Theme.radiusMedium
                                     color: Theme.bgSurface1
                                     border.color: Theme.border
@@ -122,7 +161,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: severityIcon(model.severity)
                                         color: Theme.textPrimary
-                                        font.pixelSize: Theme.fontLarge
+                                        font.pixelSize: Theme.fontSmall
                                         font.bold: true
                                     }
                                 }
@@ -135,7 +174,7 @@ Item {
                                     Text {
                                         text: model.typeName
                                         color: Theme.textPrimary
-                                        font.pixelSize: Theme.fontMedium
+                                        font.pixelSize: Theme.fontSmall
                                         font.bold: true
                                         elide: Text.ElideRight
                                         width: parent.width
@@ -144,7 +183,7 @@ Item {
                                     Text {
                                         text: model.message
                                         color: Theme.textPrimary
-                                        font.pixelSize: Theme.fontSmall
+                                        font.pixelSize: Theme.fontXSmall
                                         opacity: 0.9
                                         elide: Text.ElideRight
                                         width: parent.width
@@ -159,8 +198,8 @@ Item {
                                         radius: Theme.radiusSmall
                                         color: Theme.bgSurface1
                                         border.color: Theme.border
-                                        height: 20
-                                        width: 68
+                                        height: 16
+                                        width: 56
 
                                         Text {
                                             anchors.centerIn: parent
@@ -174,8 +213,8 @@ Item {
                                         radius: Theme.radiusSmall
                                         color: Theme.bgSurface1
                                         border.color: Theme.border
-                                        height: 20
-                                        width: 68
+                                        height: 16
+                                        width: 56
 
                                         Text {
                                             anchors.centerIn: parent
